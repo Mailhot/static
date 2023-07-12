@@ -9,29 +9,31 @@ class Point():
         self.name = name
 
     def __repr__(self):
-        return f'P({self.x},{self.y})'     
+        if self.name == None:
+            return f'P({self.x},{self.y})'
+        
+        elif self.name != None:
+            return f'{self.name}({self.x},{self.y})'
 
-    def move(self, angle=0, point=Point(0,0)):
-
-        # Translation
-        if point.x != 0 and point.y !=0:
-            # translate a point 
-            self.x += point.x
-            self.y += point.y
+    def move(self, angle=0, point=None):
 
         # Rotation
         if angle != 0:
             # Find the initial point angle
-            theta0 = math.atan2(self.point.y, self.point.x)
+            theta0 = math.atan2(self.y, self.x)
             # print(theta0)
-            length_init = math.sqrt(point.x ** 2 + point.y ** 2)
+            length_init = math.sqrt(self.x ** 2 + self.y ** 2)
             self.x = length_init * math.cos(theta0 + math.radians(angle))
             self.y = length_init * math.sin(theta0 + math.radians(angle))
 
+        # Translation
+        # TODO: Ambigus does the translation happen before or after?
+        if point != None:
+            # translate a point 
+            self.x += point.x
+            self.y += point.y
+
         return self
-
-
-
 
         
 
@@ -148,48 +150,30 @@ class Gravity(Load):
 
 class Force():
     """Force class, holds a load and a point"""
-    def __init__(self, load, point=(0, 0)):
+    def __init__(self, load, point=Point(0, 0)):
         
         self.load = load
         self.point = point
 
     def __repr__(self):
-        return f'f={self.load.module}, theta={self.load.angle}, Fx={self.load.Fx}, Fy={self.load.Fy}, x={self.point.x}, y={self.point.y}'
+        point_str = str(self.point)
+        return f'{point_str} f={self.load.module}, theta={self.load.angle}, Fx={self.load.Fx}, Fy={self.load.Fy}'
         
     def move(self, angle=0, point=Point(0,0)):
-        self.point = self.point.move(angle, point)
+        self.point.move(angle, point)
 
         # Moments
-        self.load.moment += point.x * self.load.Fy 
+        self.load.moment += point.x * self.load.Fy
         self.load.moment += point.y * self.load.Fx
+        
         if isinstance(self.load, Gravity):
             pass
+
         else:
             self.load.angle += angle
-
+        self.load.update()
             
-        # if point.x != 0 and point.y !=0:
-        #     # translate a series of point from forces
-
-        #     self.point.x += point.x
-        #     self.point.y += point.y
-
-        #     # Moments
-        #     self.load.moment += point.x * self.load.Fy 
-        #     self.load.moment += point.y * self.load.Fx
-
-        # # Rotation
-        # if angle != 0:
-        #     # Find the initial point angle
-        #     theta0 = math.atan2(self.point.y, self.point.x)
-        #     # print(theta0)
-        #     length_init = math.sqrt(point.x ** 2 + point.y ** 2)
-        #     self.point.x = length_init * math.cos(theta0 + math.radians(angle))
-        #     self.point.y = length_init * math.sin(theta0 + math.radians(angle))
-            
-
         return self
-
 
 
 class Solid():
@@ -200,57 +184,27 @@ class Solid():
         self.points = points
 
     def __repr__(self,):
+        
         returned_string = '\nForces:\n'
 
         for element in self.forces:
             returned_string += str(element) + '\n'
+
         returned_string += 'Points:\n'
+        
         for element in self.points:
             returned_string += str(element) + '\n'
 
         return returned_string
 
+
     def move(self, angle=0, point=Point(0,0)):
-        # TODO: use the Force move and make a point move for this. 
-        for element in self.forces + self.points:
+        
+        for element in self.forces:
+            element.move(angle, point)
 
-            if point.x != 0 and point.y !=0:
-                # translate a series of point from forces
-                if isinstance(element, Force):
-                    element.point.x += point.x
-                    element.point.y += point.y
-
-                    # Moments
-                    element.load.moment += point.x * element.load.Fy
-                    element.load.moment += point.y * element.load.Fx
-
-                elif isinstance(element, Point):
-                    element.x += point.x 
-                    element.y += point.y
-
-            # Rotation
-            if angle != 0:
-                if isinstance(element, Force):
-                    # Find the initial point angle
-                    theta0 = math.atan2(element.point.y, element.point.x)
-                    # print(theta0)
-                    length_init = math.sqrt(point.x ** 2 + point.y ** 2)
-                    element.point.x = length_init * math.cos(theta0 + math.radians(angle))
-                    element.point.y = length_init * math.sin(theta0 + math.radians(angle))
-                    element.load.angle += angle
-                    element.load.update()
-
-                elif isinstance(element, Gravity):
-                    pass # gravity does not rotate
-
-                elif isinstance(element, Point):
-                    # Find the initial point angle
-                    theta0 = math.atan2(element.y, element.x)
-                    # print(theta0)
-                    length_init = math.sqrt(point.x ** 2 + point.y ** 2)
-                    element.x = length_init * math.cos(theta0 + math.radians(angle))
-                    element.y = length_init * math.sin(theta0 + math.radians(angle))
-
+        for element in self.points:
+            element.move(angle, point)
 
         return self
 

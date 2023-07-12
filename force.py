@@ -144,11 +144,19 @@ force_mast = (0, -9100.0, -1217000.0)
 print('pivot')
 
 print('rotating module')
-points = [Point(0,0), Point(12,6), Point(12,12)]
 
-solid_pivot = Solid(forces=[Force(Gravity(2000, -90), Point(12, 6))], points=points).move(angle=90)
+points = [Point(0,0, name='P0'), Point(12,12, name='P1')]
+gravity1 = Force(Gravity(2000, -90), Point(12, 6))
+print(gravity1)
+solid_pivot = Solid(forces=[gravity1], points=points).move(angle=90)
 print(solid_pivot)
 
+print('adding other module forces directly')
+solid_pivot.forces.append(Force(Gravity(6600, -90), Point(120, 8)).move(0, Point(-100,18)))
+solid_pivot.forces.append(Force(Gravity(2500, -90), Point(30, 12)).move(0, Point(-100,18)).move(0, Point(+100,12)))
+solid_pivot.forces.append(Force(Load(40000, 0), Point(36, 18)).move(0, Point(-100,18)).move(0, Point(+100,12)))
+print('after adding all to pivot')
+print(solid_pivot)
 points4 = rotation(points, 90)
 print(points4)
 

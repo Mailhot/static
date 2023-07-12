@@ -7,7 +7,9 @@ class Point():
         self.y = y
         self.z = z
         self.name = name
-        
+
+    def __repr__(self):
+        return f'P({self.x},{self.y})'        
 
 
 
@@ -116,9 +118,31 @@ class Force():
         self.point = point
 
     def __repr__(self):
-        return f'f={self.load.module}, theta={self.load.angle}, Fx={self.load.Fx}, Fy={self.load.Fy}, x={self.point.x}, y={self.point.y}'
+        return f'f={self.load.module}, theta={self.load.angle}, Fx={self.load.Fx}, Fy={self.load.Fy}, M={self.load.moment}, x={self.point.x}, y={self.point.y}'
         
-        
+    def move(self, angle=0, point=Point(0,0)):
+
+        if point.x != 0 and point.y !=0:
+            # translate a series of point from forces
+            output = []
+            self.point.x += point.x
+            self.point.y += point.y
+
+            # Moments
+            self.load.moment += point.x * self.load.Fy 
+            self.load.moment += point.y * self.load.Fx
+
+        # Rotation
+        if angle != 0:
+            # Find the initial point angle
+            theta0 = math.atan2(self.point.y, self.point.x)
+            # print(theta0)
+            length_init = math.sqrt(point.x ** 2 + point.y ** 2)
+            self.point.x = length_init * math.cos(theta0 + math.radians(angle))
+            self.point.y = length_init * math.sin(theta0 + math.radians(angle))
+            self.load.angle += angle
+        return self
+
         
 
 if __name__ == '__main__':

@@ -20,7 +20,7 @@ def find_net_force(forces):
     force = (total_magnitude, total_angle)
     return force
 
-forces = [(10, 90), (10, -45)]#, (100, 45), (20, 180)]
+# forces = [(10, 90), (10, -45)]#, (100, 45), (20, 180)]
 
 #print(find_net_force(forces))
 
@@ -29,7 +29,7 @@ forces = [(10, 90), (10, -45)]#, (100, 45), (20, 180)]
 # Force and point: [(force, angle), (x, y)]
 forces2 = [[(10, 90), (5, -2)], [(10, -45), (10, 0)]]
 
-def find_net_force_moment(forces, moments=[]):
+def find_net_force_moment(forces):
 
     horizontal_total = 0
     vertical_total = 0
@@ -69,7 +69,7 @@ def rotation(points, angle):
     for point in points:
         # Find the initial point angle
         theta0 = atan2(point.y, point.x)
-        print(theta0)
+        # print(theta0)
         length_init = sqrt(point.x ** 2 + point.y ** 2)
         x_prim = length_init * cos(theta0 + radians(angle))
         y_prim = length_init * sin(theta0 + radians(angle))
@@ -86,9 +86,8 @@ def translation(forces, point):
         # Moments
         force.load.moment += point.x * force.load.Fy 
         force.load.moment += point.y * force.load.Fx
-
-
         output.append(force)
+
     return output
 
 
@@ -119,7 +118,7 @@ def find_reactions(point_forces, reactions):
     return (horizontal_total, vertical_total, reaction_force, reaction_angle)
 
 reactions = find_reactions(point_forces, reactions)
-print(f'fx={reactions[0]}, fy={reactions[1]}, R={reactions[2]}, Theta={reactions[3]}')
+# print(f'fx={reactions[0]}, fy={reactions[1]}, R={reactions[2]}, Theta={reactions[3]}')
 
 
 
@@ -134,9 +133,11 @@ force_table = (0, -2500.0, -75000.0)
 
 print('mast')
 
-forces3 = [Force(Load(6600, -90), Point(120, 8)), Force(Load(2500, -90, moment=-75000), Point(140, 12))]
+forces3 = [Force(Load(6600, -90), Point(120, 8)), 
+            Force(Load(2500, -90, moment=-75000), Point(140, 12)),
+            ]
 moments3 = [-75000]
-print(find_net_force_moment(forces3, moments3))
+print(find_net_force_moment(forces3))
 
 force_mast = (0, -9100.0, -1217000.0)
 
@@ -147,18 +148,19 @@ points = [Point(0,0), Point(12,6), Point(12,12)]
 points4 = rotation(points, 90)
 print(points4)
 
-forces4 = [Force(Load(6600, -90, moment=-1142000), Point(120, 8)), Force(Load(2500, -90, moment=-75000), Point(140, 12)), ]
-moments4 = [-1217000]
+forces4 = [Force(Load(6600, -90, moment=-1142000), Point(120, 8)).move(angle=15, point=Point(-120, 0)), 
+            Force(Load(2500, -90, moment=-75000), Point(140, 12)).move(angle=15, point=Point(-120, 0)),
+            ]
 
-for forces in forces4:
-    print(forces)
 # translate forces4 into Pivot module
-forces4 = translation(forces4, Point(-120,0)) #TODO: this implies changing the moments...
-print(forces4)
+# forces4 = translation(forces4, Point(-120,0)) #TODO: this implies changing the moments...
+# print(forces4)
 
-forces5 = [Force(Load(6600, -90, moment=-1142000), Point(120, 8)), Force(Load(2500, -90, moment=-75000), Point(140, 12)), Force(Load(2000, -90), Point(-6.0, 12.0)), ]
-moments5 = moments4
+forces5 = [Force(Load(6600, -90, moment=-1142000), Point(120, 8)).move(angle=15, point=Point(-120, 0)), 
+            Force(Load(2500, -90, moment=-75000), Point(140, 12)).move(angle=15, point=Point(-120, 0)), 
+            Force(Load(2000, -90), Point(-6.0, 12.0)), 
+            ]
 
-print(find_net_force_moment(forces5, moments5))
+print(find_net_force_moment(forces5))
 
 forces6 = (6.79678973526781e-13, -11100.0, -2347000.0)

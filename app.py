@@ -118,6 +118,13 @@ class Force():
     def __repr__(self):
         return f'f={self.load.module}, theta={self.load.angle}, Fx={self.load.Fx}, Fy={self.load.Fy}, x={self.point.x}, y={self.point.y}'
         
+
+class Solid():
+    """Solid class that contain forces and points"""
+    def __init__(self, forces, points):
+        
+        self.forces = forces
+        self.points = points
         
         
 

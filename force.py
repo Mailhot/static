@@ -1,5 +1,5 @@
 from math import sin, cos, tan, sqrt, radians, atan2, degrees
-from app import Load, Force, Point
+from app import Load, Force, Point, Solid, Gravity
 
 def find_net_force(forces):
     # Sum forces at point in 2d (x and y) from a list of set(force, angle[deg])
@@ -145,6 +145,10 @@ print('pivot')
 
 print('rotating module')
 points = [Point(0,0), Point(12,6), Point(12,12)]
+
+solid_pivot = Solid(forces=[Force(Gravity(2000, -90), Point(12, 6))], points=points).move(angle=90)
+print(solid_pivot)
+
 points4 = rotation(points, 90)
 print(points4)
 

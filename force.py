@@ -151,13 +151,23 @@ print(gravity1)
 solid_pivot = Solid(forces=[gravity1], points=points).move(angle=90)
 print(solid_pivot)
 
-print('adding other module forces directly')
+# print('adding other module forces directly')
+# print(Force(Gravity(6600, -90), Point(120, 8)))
+# print(Force(Gravity(6600, -90), Point(120, 8)).move(0, Point(-100,18)))
 solid_pivot.forces.append(Force(Gravity(6600, -90), Point(120, 8)).move(0, Point(-100,18)))
 solid_pivot.forces.append(Force(Gravity(2500, -90), Point(30, 12)).move(0, Point(-100,18)).move(0, Point(+100,12)))
 solid_pivot.forces.append(Force(Load(40000, 0), Point(36, 18)).move(0, Point(-100,18)).move(0, Point(+100,12)))
 
 print('after adding all to pivot')
 print(solid_pivot)
+print('force acount boom-pivot joint:', solid_pivot.find_net_force_at_origin())
+
+# Find resulting force on cylinder between points
+force_pivot.
+
+print('Moving the solid in the boom referencial')
+solid_pivot.move(0, Point(60,8))
+
 points4 = rotation(points, 90)
 print(points4)
 

@@ -137,6 +137,7 @@ class Gravity(Load):
     def __init__(self, module=None, angle=-90, Fx=None, Fy=None, moment=0):
         super().__init__(module, angle, Fx, Fy, moment)
         self.angle = -90
+        self.update()
     
     def update(self, module=None, angle=None, Fx=None, Fy=None):
         if self.module != None and self.angle != None:
@@ -157,14 +158,14 @@ class Force():
 
     def __repr__(self):
         point_str = str(self.point)
-        return f'{point_str} f={self.load.module}, theta={self.load.angle}, Fx={self.load.Fx}, Fy={self.load.Fy}'
+        return f'{point_str} f={self.load.module}, theta={self.load.angle}, moment={self.load.moment}, Fx={self.load.Fx}, Fy={self.load.Fy}'
         
     def move(self, angle=0, point=Point(0,0)):
         self.point.move(angle, point)
 
         # Moments
-        self.load.moment += point.x * self.load.Fy
-        self.load.moment += point.y * self.load.Fx
+        # self.load.moment += (point.x) * self.load.Fy
+        # self.load.moment += (point.y) * self.load.Fx
         
         if isinstance(self.load, Gravity):
             pass
@@ -207,6 +208,58 @@ class Solid():
             element.move(angle, point)
 
         return self
+
+    def find_net_force_at_origin(self):
+        # calculated at (0,0)
+        horizontal_total = 0
+        vertical_total = 0
+        moment_total = 0
+
+        for i in self.forces:
+            # add moment
+            if i.load.moment != 0:
+                moment_total += i.load.moment
+
+            horizontal = i.load.module * math.cos(math.radians(i.load.angle))
+            vertical = i.load.module * math.sin(math.radians(i.load.angle))
+            moment = horizontal * i.point.y + vertical * i.point.x
+            print(moment)
+            horizontal_total += horizontal
+            vertical_total += vertical
+            moment_total += moment
+
+
+        total_magnitude = math.sqrt(horizontal_total ** 2 + vertical_total ** 2)
+        total_angle = math.atan2(vertical_total, horizontal_total)
+        total_angle = math.degrees(total_angle)
+        total_magnitude = round(total_magnitude, 1)
+        total_angle = round(total_angle, 1)
+        
+        return Force(Load(Fx=horizontal_total, Fy=vertical_total, moment=moment_total), Point(0,0))
+
+    def find_force_between_points(self, point1, point2):
+        # If a pivot is at origin and given the load at this origin, 
+        # this will find the angle of resulting force and calculate the force at this point1 (with angle) based on point2
+        cyl_x = point1.x - point2.x
+        cyl_y = point1.y - point2.y
+
+        angle = math.atan2(cyl_y, cyl_x)
+
+        # We now have a point and angle to find the resulting force
+        # Take a sum of force and moment value and convert it to a reaction at a point
+        horizontal_total = point_forces[0]
+        vertical_total = point_forces[1]
+        moment_total = point_forces[2]
+
+
+        Rx = -moment_total / (vertical_total + tan(radians(reactions[0][1]))*reactions[1][0])
+        Ry = Rx * tan(radians(reactions[0][1]))
+
+        horizontal_total += Rx 
+        vertical_total += Ry 
+
+        reaction_angle = degrees(atan2(Ry, Rx))
+        reaction_force = sqrt(Ry ** 2 + Rx ** 2)
 
 if __name__ == '__main__':
 

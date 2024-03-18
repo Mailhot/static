@@ -176,6 +176,25 @@ class Force():
             
         return self
 
+    def find_reaction_between_points(self, point1, point2):
+        # If a pivot is at origin and given the load at this origin, 
+        # this will find the angle of resulting force and calculate the force at this point1 (with angle) based on point2
+        cyl_x = point1.x - point2.x
+        cyl_y = point1.y - point2.y
+
+        angle_rad = math.atan2(cyl_y, cyl_x)
+
+        # We now have a point and angle to find the resulting force
+        # Take a sum of force and moment value and convert it to a reaction at a point
+
+        R1x = -self.load.moment / (cyl_y + math.atan(angle_rad))
+        R1y = R1x * math.atan(angle_rad)
+
+        reaction_angle = math.degrees(angle_rad)
+        reaction_force = math.sqrt(R1y ** 2 + R1x ** 2)
+        return Force(Load(reaction_force, reaction_angle), point1)
+
+
 
 class Solid():
     """Solid class that contain forces and points"""
@@ -237,30 +256,7 @@ class Solid():
         
         return Force(Load(Fx=horizontal_total, Fy=vertical_total, moment=moment_total), Point(0,0))
 
-    def find_force_between_points(self, point1, point2):
-        # If a pivot is at origin and given the load at this origin, 
-        # this will find the angle of resulting force and calculate the force at this point1 (with angle) based on point2
-        cyl_x = point1.x - point2.x
-        cyl_y = point1.y - point2.y
-
-        angle = math.atan2(cyl_y, cyl_x)
-
-        # We now have a point and angle to find the resulting force
-        # Take a sum of force and moment value and convert it to a reaction at a point
-        horizontal_total = point_forces[0]
-        vertical_total = point_forces[1]
-        moment_total = point_forces[2]
-
-
-        Rx = -moment_total / (vertical_total + tan(radians(reactions[0][1]))*reactions[1][0])
-        Ry = Rx * tan(radians(reactions[0][1]))
-
-        horizontal_total += Rx 
-        vertical_total += Ry 
-
-        reaction_angle = degrees(atan2(Ry, Rx))
-        reaction_force = sqrt(Ry ** 2 + Rx ** 2)
-
+    
 if __name__ == '__main__':
 
     base0 = Element(mass=20000)

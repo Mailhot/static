@@ -4,6 +4,8 @@ from vector import Vector, cross_prod, Element, Load, Machine
 # current position
 mast_angle = 90 #mast angle taken from horizontal
 holdback = 8000 #lbs
+feed_position = 20 # [0-158 inches]a  distance value in inches for the feed positoin
+mast_slide_position = 20 # [0-40 inches] distance value for the mast slide position
 
 ## Components
 max150 = Machine() # Set a machine with default gravity
@@ -20,71 +22,52 @@ base.loads.append(platform.move(-3, 10)) # move platform in base referential and
 
 mast_base_pos = Vector(5, 5)
 mast_base = Load(mast_base_pos, 10, _type='mass')
-base.loads.append(mast_base.move(-3, 15)) # the mast base is positioned at -3, 15 in the base element
+base.loads.append(mast_base.move(-3 - mast_slide_position, 15)) # the mast base is positioned at -3, 15 in the base element
+
+engine_base_pos = Vector(22.5, 20)
+engine_base = Load(engine_base_pos, 450, _type='mass')
+base.loads.append(engine_base.move(30, 35))
+
+pump_base_pos = Vector(8, 5) # #7 - Pumps (2x tandem K3VL60)
+pump_base = Load(pump_base_pos, 110, _type='mass')
+base.loads.append(pump_base.move(10, 35))
+
+jack_base_pos = Vector(60, 25) # #8 - Jacks (4x of them)
+jack_base = Load(jack_base_pos, 800, _type='mass') 
+base.loads.append(jack_base.move(0, 30))
+
+
+
+
+
+mast = Element()
+# We add the mast loads laying down and will rotate it once all components are added (instead of rotating each components)
+
+pivot_mast_pos = Vector(7, 7)
+pivot_mast = Load(pivot_mast_pos, 12, _type='mass')
+base.loads.append(pivot_mast)
+
+mast_mast_pos = Vector(60, 8)
+mast_mast = Load(mast_mast_pos, 40, _type='mass')
+mast.loads.append(mast_mast.move(-20, 10))
+
+head_mast_pos = Vector(15, 10)
+head_mast = Load(head_mast_pos, 20, _type='mass')
+mast.loads.append(head_mast.move(-20+feed_position, 34))
+
+feed_force_mast_pos = Vector(0, 12) # # 21 - drilling force
+feed_force_mast = Load(feed_force_mast_pos, Vector(-holdback, 0), _type='force')
+mast.loads.append(feed_force_mast.move(-20+feed_position, 34))
 
 
 max150.elements.append(base)
+max150.elements.append(mast)
+
+mast.move(-1, 7) # the origin of the mast element is the pivot hinge
+mast.rotate(gamma=mast_angle)
+
 print(max150.reactions())
 
 
 
 
-
-# # 2 - Base
-# bl02 = Vector(-3, 15)
-# bl2 = Vector(5, 5)
-# mg2 = Vector(0, -10)
-# result += cross_prod((bl02+bl2), mg2)
-# print('with base:', result)
-
-# # 3 - Pivot
-# bl03 = Vector(-1, 7)
-# bl3 = Vector(7, 7)
-# bl3.rotate(gamma=mast_angle)
-# # print(bl3)
-# mg3 = Vector(0, -12) # no rotation gravity is absolute
-# result += cross_prod((bl03+bl3), mg3)
-# print('with pivot:', result)
-
-# # 4 - Mast
-# bl04 = bl03 + Vector(-20, 10).rotate(gamma=mast_angle) #we refer position of mast from the pivot point so that the angle will define everything. Otherwise we would have to re-position this point based on the angle.
-# bl4 = Vector(60, 8).rotate(gamma=mast_angle)
-# mg4 = Vector(0, -40)
-# result += cross_prod((bl04+bl4), mg4)
-# print('with mast:', result)
-
-
-
-# # 6 - Engine
-# bl06 = Vector(30, 35)
-# bl6 = Vector(22.5, 20)
-# mg6 = Vector(0, -450) # around 450 lbs
-# result += cross_prod((bl06+bl6), mg6)
-# print('with engine:', result)
-
-# #7 - Pumps (2x tandem K3VL60)
-# bl07 = Vector(10, 35)
-# bl7 = Vector(8, 5)
-# mg7 = Vector(0, -110) # 110 lbs for the 2 of them
-# result += cross_prod((bl07+bl7), mg7)
-# print('with pump:', result)
-
-# #8 - Jacks (4x of them)
-# bl08 = Vector(0, 30)
-# bl8 = Vector(60, 25)
-# mg8 = Vector(0, -800)
-# result += cross_prod((bl08+bl8), mg8)
-# print('with jacks:', result)
-
-
-# ## Forces
-# # 21 - drilling force
-# bl0_21 = bl05 # We use the head referential
-# bl21 = Vector(0, 12).rotate(gamma=mast_angle)
-# f21 = Vector(-holdback, 0).rotate(gamma=mast_angle) #holdback is negative it goes in minus x direction.
-# result_f21 = cross_prod((bl0_21+bl21), f21)
-# print('moment for holdback force:', result_f21)
-# result += result_f21
-
-# result = -result
-# print('Reaction at point:', result)

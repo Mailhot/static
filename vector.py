@@ -78,9 +78,10 @@ class Load():
         #TODO: check if _type is in [force, moment, mass] return error if not
 
     def rotate(self, alpha=0, beta=0, gamma=0):
-        position.rotate(alpha=alpha, beta=beta, gamma=gamma)
-        if _type in ['force']: #moments and gravity does not rotate with displacement. 
-            charge.rotate(alpha=alpha, beta=beta, gamma=gamma)
+        self.position.rotate(alpha=alpha, beta=beta, gamma=gamma)
+        if self._type in ['force']: #moments and gravity does not rotate with displacement. 
+            self.charge.rotate(alpha=alpha, beta=beta, gamma=gamma)
+        return self
 
     def move(self, x, y, z=0):
         self.position.x += x
@@ -170,6 +171,7 @@ class Machine():
             force, moment = element.reactions(gravity=self.gravity)
             forces += force
             moments += moment
+        print('[(force vector), (moment vector)]')
         return [forces, moments]
 
 

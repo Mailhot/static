@@ -94,6 +94,7 @@ class Load():
         if self._type == 'force':
             moments = cross_prod(self.position, self.charge)
             forces = self.charge
+            
         elif self._type == 'moment':
             moments = self.charge
             forces = Vector(0,0)
@@ -102,7 +103,7 @@ class Load():
             moments = cross_prod(self.position, self.charge * gravity)
             forces = self.charge * gravity
 
-        return [forces, moments]
+        return forces, moments
 
 class Gravity(Vector):
     """A gravity class"""
@@ -120,6 +121,13 @@ class Element():
         self.width = width
         self.height = height
         self.loads = loads
+
+    def __repr__(self):
+        output += f'Current loads for element '
+        for load in self.loads:
+            # TODO: print loads on element.
+            pass
+
 
     def rotate(self, alpha=0, beta=0, gamma=0):
         # Rotate the element from it's origin
@@ -140,7 +148,7 @@ class Element():
             forces += force
             moments += moment
 
-        return [forces, moments]
+        return forces, moments
 
 
 
@@ -169,6 +177,7 @@ class Machine():
         moments = Vector(0, 0, 0)
         for element in self.elements:
             force, moment = element.reactions(gravity=self.gravity)
+            print(moment)
             forces += force
             moments += moment
         print('[(force vector), (moment vector)]')

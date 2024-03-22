@@ -6,3 +6,8 @@ We should be able to cut the model between 2 load and get a load moment value at
 
 TODO: add visualisation tool to show the different components
 TODO: make the element englobable where we can englobe few components with another element, and move them as group.
+
+
+Note: 
+rotate always happens in the current origin, moving an element or load will affect 
+it's own origin, so rotating after moving will happen around the new origin.

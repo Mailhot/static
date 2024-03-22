@@ -30,7 +30,7 @@ mast = Element()
 
 pivot_mast_pos = Vector(20, 20)
 pivot_mast = Load(pivot_mast_pos, 800, _type='mass')
-base.loads.append(pivot_mast)
+mast.loads.append(pivot_mast)
 
 # mast_mast_pos = Vector(90, 8)
 # mast_mast = Load(mast_mast_pos, 6000, _type='mass')
@@ -43,8 +43,9 @@ base.loads.append(pivot_mast)
 
 max150.elements.append(mast)
 
+mast.rotate(gamma=90) # It's important to rotate before moving as you are rotating around the moved origin
 mast.move(-10, 36) # the origin of the mast element is the pivot hinge
-mast.rotate(gamma=90)
+
 
 print(max150.reactions())
 

@@ -43,8 +43,9 @@ mast.loads.append(pivot_mast)
 
 max150.elements.append(mast)
 
-mast.rotate(gamma=90) # It's important to rotate before moving as you are rotating around the moved origin
 mast.move(-10, 36) # the origin of the mast element is the pivot hinge
+
+mast.rotate(gamma=90) # It's important to rotate before moving as you are rotating around the moved origin
 
 
 print(max150.reactions())

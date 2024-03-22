@@ -11,3 +11,9 @@ TODO: make the element englobable where we can englobe few components with anoth
 Note: 
 rotate always happens in the current origin, moving an element or load will affect 
 it's own origin, so rotating after moving will happen around the new origin.
+
+
+Elements holds multiple loads, loads are define into their own referentials and then moved into the element referential or rotated.
+
+The moves on an element does not affect the loads position, they are added on calculating results like forces. They 
+are stored into the element as list of moves and rotations. 

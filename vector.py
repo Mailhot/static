@@ -1,6 +1,7 @@
 import numpy as np
 import numbers
 from math import sin, cos, radians
+from copy import deepcopy
 
 class Vector():
     """A simple vector class to wrap the numpy vector functions"""
@@ -39,14 +40,26 @@ class Vector():
             raise NotImplemented
         return Vector(self.x * other, self.y * other, self.z * other)
 
+    def __eq__(self, other):
+        if other == None:
+            return False
+        if self.x == other.x and self.y == other.y and self.z == other.z:
+            return True
+        else:
+            return False
 
-    def rotate(self, alpha=0, beta=0, gamma=0):
+
+    def rotate(self, rotation):
         # angle in degree
+        alpha = rotation.x
+        beta = rotation.y
+        gamma = rotation.z
 
         if alpha == 0 and beta == 0 and gamma == 0:
             print('no changes, need an angle to rotate!')
             return self
         else:
+            # print('rotating', rotation)
             alpha = radians(alpha)
             beta = radians(beta)
             gamma = radians(gamma)
@@ -89,12 +102,11 @@ class Load():
         self.position = position
         self.charge = charge
         self._type = _type
-        #TODO: check if _type is in [force, moment, mass] return error if not
 
-    def rotate(self, alpha=0, beta=0, gamma=0):
-        self.position.rotate(alpha=alpha, beta=beta, gamma=gamma)
+    def rotate(self, rotation=Rotation(0)):
+        self.position.rotate(rotation)
         if self._type in ['force']: #moments and gravity does not rotate with displacement. 
-            self.charge.rotate(alpha=alpha, beta=beta, gamma=gamma)
+            self.charge.rotate(rotation)
         return self
 
     def move(self, x, y, z=0):
@@ -103,19 +115,40 @@ class Load():
         self.position.z += z
         return self
 
-    def reactions(self, gravity=None, parent_moves=None, parent_rotations=None): # Calculate reaction forces and moment at origin of load.
+    def reactions(self, gravity=None, parent_move=None, parent_rotation=None): # Calculate reaction forces and moment at origin of load.
         # if the load is part of an element, the load must be moved to proper position in element upon inserting it. 
+
+        # Need to apply rotation and then moves for the load to properly calculate it.
+        final_charge = self.charge
+        final_position = self.position
+        # print(final_position)
+
+
+        if parent_rotation not in [None, Rotation(0,0)]:
+            # print('final_position before', final_position)
+            final_position.rotate(parent_rotation)
+            # print('final_position after', final_position)
+            if self._type == 'force':
+                final_charge.rotate(parent_rotation)
+
+        if parent_move not in [None, Vector(0,0)]:
+            final_position += parent_move
+        
+        
+
         if self._type == 'force':
-            moments = cross_prod(self.position, self.charge)
-            forces = self.charge
+            if parent_rotation not in [None, Vector(0,0)]:
+                final_charge.rotate(parent_rotation)
+            moments = cross_prod(final_position, final_charge)
+            forces = final_charge
 
         elif self._type == 'moment':
-            moments = self.charge
+            moments = final_charge
             forces = Vector(0,0)
 
         elif self._type == 'mass':
-            moments = cross_prod(self.position, self.charge * gravity)
-            forces = self.charge * gravity
+            moments = cross_prod(final_position, final_charge * gravity)
+            forces = final_charge * gravity
 
         return forces, moments
 
@@ -128,26 +161,23 @@ class Gravity(Vector):
         
 
 class Element():
-    """Basic element class for calculation various thing on an element assembly"""
-    def __init__(self, length=0, width=0, height=0, loads=[], moves=[], rotations=[]):
-
+    def __init__(self, length=0, width=0, height=0, loads=None, name=None):
+        """Basic element class for calculation various thing on an element assembly"""
         self.length = length
         self.width = width
         self.height = height
-        self.loads = loads
-        self.moves = []
-        self.rotations=[]
+        self.name = name
 
-    def __repr__(self):
-        output += f'Current loads for element '
-        for load in self.loads:
-            # TODO: print loads on element.
-            pass
+        if loads == None:
+            self.loads = list()
+        else:
+            self.loads = loads
+        self.moves = list()
+        self.rotations = list()
 
-
-    def rotate(self, alpha=0, beta=0, gamma=0):
+    def rotate(self, rotation):
         # Rotate the element from it's origin
-        rotation = [alpha, beta, gamma]
+        # rotation = Rotation(alpha, beta, gamma)
         self.rotations.append(rotation)
         return self
 
@@ -156,26 +186,35 @@ class Element():
         self.moves.append(move)
         return self
 
-    def reactions(self, gravity=None):
+    def reactions(self, gravity=None, moves=None, rotations=None):
         forces = Vector(0,0,0)
         moments = Vector(0,0,0)
-        print('self.moves', self.moves)
+
+        # print('element rotation and moves:', self.rotations, self.moves)
+        
         if len(self.moves) > 1:
-            moves = sum(self.moves) # sum all moves of the element
+            move = sum(self.moves) # sum all moves of the element
+            # print('self.moves', self.moves)
+        elif len(self.moves) == 1:
+            move = self.moves[0]
         else:
-            moves = Vector(0,0)
+            move = Vector(0,0)
 
         if len(self.rotations) > 1:
-            rotations = sum(self.rotations) #sum all rotation of the element
+            rotation = sum(self.rotations) #sum all rotation of the element
+            # print('self.rotations', self.rotations)
+        elif len(self.rotations) == 1:
+            rotation = self.rotations[0]
+
         else:
-            rotations = Rotation(0, 0)
+            rotation = Rotation(0, 0)
 
         for load in self.loads:
-            force, moment = load.reactions(gravity=gravity, parent_moves=moves, parent_rotations=rotations)
+            force, moment = load.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation)
             forces += force
             moments += moment
 
-        return forces, moments
+        return [forces, moments]
 
 
 
@@ -190,8 +229,11 @@ class Machine():
     TODO: what about partial section I.E. A crane, or 2 mast.
     """
 
-    def __init__(self, elements=[], gravity=Gravity(), **parameters):
-        self.elements = elements
+    def __init__(self, elements=None, gravity=Gravity()):
+        if elements == None:
+            self.elements = list()
+        else:
+            self.elements = elements
         self.gravity = gravity
 
     def get_results(self, vector):
@@ -202,11 +244,17 @@ class Machine():
     def reactions(self):
         forces = Vector(0, 0, 0)
         moments = Vector(0, 0, 0)
-        for element in self.elements:
+        for number, element in enumerate(self.elements):
+            force = Vector(0,0)
+            moment = Vector(0,0)
             force, moment = element.reactions(gravity=self.gravity)
-            print(moment)
+
+            
+            print(number, element.name, force, moment)
             forces += force
             moments += moment
+        print()
+        print('-------------------------------')
         print('[(force vector), (moment vector)]')
         return [forces, moments]
 

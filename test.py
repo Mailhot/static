@@ -52,8 +52,15 @@ mast.move(-10, 36) # the origin of the mast element is the pivot hinge
 
 mast.rotate(Rotation(gamma=90)) # It's important to rotate before moving as you are rotating around the moved origin
 
+reactions = max150.reactions()
+print(reactions)
 
-print(max150.reactions())
+
+if reactions[0] == Vector(0, -20600, 0) and reactions[1] == Vector(0.0, 0.0, -330800.00000000006):
+	print('test passed on moments')
+else: 
+	print('Test did not pass')
+
 
 
 

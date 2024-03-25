@@ -66,6 +66,9 @@ max150.elements.append(mast)
 mast.move(-1, 7) # the origin of the mast element is the pivot hinge
 mast.rotate(gamma=mast_angle)
 
+
+# reactions = max150.reactions()
+# if reactions == []
 print(max150.reactions())
 
 

@@ -21,6 +21,12 @@ class Vector():
         self.z += other.z
         return self
 
+    def __radd__(self, other):
+        if other == 0:
+            return self
+        else:
+            return self.__add__(other)
+
     def __sub__(self, other): 
         self.x -= other.x
         self.y -= other.y
@@ -181,8 +187,8 @@ class Element():
         self.rotations.append(rotation)
         return self
 
-    def move(self, x, y, z=0):
-        move = Vector(x=x, y=y, z=z)
+    def move(self, move):
+        # move = Vector(x=x, y=y, z=z)
         self.moves.append(move)
         return self
 
@@ -193,8 +199,8 @@ class Element():
         # print('element rotation and moves:', self.rotations, self.moves)
         
         if len(self.moves) > 1:
-            move = sum(self.moves) # sum all moves of the element
             # print('self.moves', self.moves)
+            move = sum(self.moves) # sum all moves of the element
         elif len(self.moves) == 1:
             move = self.moves[0]
         else:
@@ -229,12 +235,15 @@ class Machine():
     TODO: what about partial section I.E. A crane, or 2 mast.
     """
 
-    def __init__(self, elements=None, gravity=Gravity()):
+    def __init__(self, elements=None, gravity=None):
         if elements == None:
             self.elements = list()
         else:
             self.elements = elements
-        self.gravity = gravity
+        if gravity == None:
+            self.gravity = Gravity()
+        else:
+            self.gravity = gravity
 
     def get_results(self, vector):
         # get a resulting force at a desired place of the model. 
@@ -253,9 +262,9 @@ class Machine():
             print(number, element.name, force, moment)
             forces += force
             moments += moment
-        print()
-        print('-------------------------------')
-        print('[(force vector), (moment vector)]')
+        # print()
+        # print('-------------------------------')
+        # print('[(force vector), (moment vector)]')
         return [forces, moments]
 
 

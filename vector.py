@@ -136,6 +136,7 @@ class Load():
             # print('final_position after', final_position)
             if self._type == 'force':
                 final_charge.rotate(parent_rotation)
+                # print(final_charge)
 
         if parent_move not in [None, Vector(0,0)]:
             final_position += parent_move
@@ -143,8 +144,7 @@ class Load():
         
 
         if self._type == 'force':
-            if parent_rotation not in [None, Vector(0,0)]:
-                final_charge.rotate(parent_rotation)
+
             moments = cross_prod(final_position, final_charge)
             forces = final_charge
 
@@ -192,7 +192,7 @@ class Element():
         self.moves.append(move)
         return self
 
-    def reactions(self, gravity=None, moves=None, rotations=None):
+    def reactions(self, gravity=None, parent_move=None, parent_rotation=None):
         forces = Vector(0,0,0)
         moments = Vector(0,0,0)
 
@@ -215,10 +215,20 @@ class Element():
         else:
             rotation = Rotation(0, 0)
 
+        if parent_move != None:
+            move += parent_move
+        if parent_rotation != None:
+            rotation += parent_rotation
+
+        # print()
+        # print('parent move and rotation:', move, rotation)
         for load in self.loads:
+            # print('load_before:', load.position, load.charge)
             force, moment = load.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation)
             forces += force
             moments += moment
+            # print('load_after:', force, moment)
+            # print()
 
         return [forces, moments]
 

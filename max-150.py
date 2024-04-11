@@ -1,10 +1,15 @@
 from vector import Vector, cross_prod, Element, Load, Machine, Rotation, Gravity
 import copy
+import pygame
+import sys
 
 
 # Notes
 # All units are in inches and pounds
-
+def arrow(length, height, x, y):
+    # an arrow element with length, height and x, y position of it's rectangle.
+    points = ((x, height/3+y), (x, 2*height/3+y), (0.8*length+x, 2*height/3+y), (0.8*length+x, height+y), (length+x, 0.5*height+y), (0.8*length+x, y), (0.8*length+x, height/3+y))
+    return points
 
 # Variables
 feed_position = 0 # range [0-160] inch 0 is at bottom of mast
@@ -26,6 +31,7 @@ holdback = -11000 # Lbs [-11000 to 6000] feed up force) Minus is force directed 
 max150 = Machine() # Set a machine with default gravity
 
 base = Element(name='base')
+
 
 
 # Track 308 (this is for the 2 tracks)
@@ -117,3 +123,33 @@ print()
 print('reactions:', reactions)
 print()
 # print('mast_alone', mast_alone.reactions(gravity=Gravity()))
+
+
+print('printing...')
+
+
+
+# Initializing Pygame
+pygame.init()
+ 
+# Initializing surface
+surface = pygame.display.set_mode((400,300))
+ 
+
+# for item in max150.elements():
+# Initializing Color
+color = (255,0,0)
+ 
+# Drawing Rectangle
+pygame.draw.rect(surface, color, pygame.Rect(30, 30, 60, 60),  3)
+# pygame.draw.polygon(surface, (0, 255, 0), ((0, 10), (0, 20), (60, 20), (60, 30), (75, 15), (60, 0), (60, 10)))
+pygame.draw.polygon(surface, (0, 255, 0), arrow(75, 20, 30, 30))
+
+
+pygame.display.flip()
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+

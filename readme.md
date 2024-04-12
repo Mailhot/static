@@ -17,3 +17,11 @@ Elements holds multiple loads, loads are define into their own referentials and 
 
 The moves on an element does not affect the loads position, they are added on calculating results like forces. They 
 are stored into the element as list of moves and rotations. 
+
+
+Test case #1
+base reactions: [(0, -14035, 0), (105800.0, 0.0, -428429.1003577506)]
+0 base (0, -14035, 0) (105800.0, 0.0, -428429.1003577506)
+1 mast (-6.735557395310442e-13, -16200.0, 0.0) (0.0, 0.0, 818630.0)
+
+reactions: [(-6.735557395310442e-13, -30235.0, 0.0), (105800.0, 0.0, 390200.8996422494)]

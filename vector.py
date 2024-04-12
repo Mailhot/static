@@ -97,7 +97,6 @@ def cross_prod(vector1, vector2):
     vector2 = [vector2.x, vector2.y, vector2.z]
 
     result = np.cross(vector1, vector2)
-    # print(result)
     return Vector(result[0], result[1], result[2])
 
     
@@ -125,8 +124,9 @@ class Load():
         # if the load is part of an element, the load must be moved to proper position in element upon inserting it. 
 
         # Need to apply rotation and then moves for the load to properly calculate it.
-        final_charge = self.charge
-        final_position = self.position
+        final_charge = deepcopy(self.charge)
+        final_position = deepcopy(self.position)
+
         # print(final_position)
 
 
@@ -141,8 +141,6 @@ class Load():
         if parent_move not in [None, Vector(0,0)]:
             final_position += parent_move
         
-        
-
         if self._type == 'force':
 
             moments = cross_prod(final_position, final_charge)
@@ -167,7 +165,7 @@ class Gravity(Vector):
         
 
 class Element():
-    def __init__(self, length=0, width=0, height=0, loads=None, name=None):
+    def __init__(self, length=0, width=0, height=0, loads=None, name=None, elements=None):
         """Basic element class for calculation various thing on an element assembly"""
         self.length = length
         self.width = width
@@ -180,6 +178,10 @@ class Element():
             self.loads = loads
         self.moves = list()
         self.rotations = list()
+        if elements == None:
+            self.elements = list()
+        else:
+            self.elements = elements
 
     def rotate(self, rotation):
         # Rotate the element from it's origin
@@ -195,14 +197,19 @@ class Element():
     def reactions(self, gravity=None, parent_move=None, parent_rotation=None):
         forces = Vector(0,0,0)
         moments = Vector(0,0,0)
+        move = Vector(0,0)
+        rotation = Rotation(0,0)
+        # print('-', self.name)
 
         # print('element rotation and moves:', self.rotations, self.moves)
         
         if len(self.moves) > 1:
             # print('self.moves', self.moves)
             move = sum(self.moves) # sum all moves of the element
+
         elif len(self.moves) == 1:
             move = self.moves[0]
+
         else:
             move = Vector(0,0)
 
@@ -222,13 +229,32 @@ class Element():
 
         # print()
         # print('parent move and rotation:', move, rotation)
-        for load in self.loads:
-            # print('load_before:', load.position, load.charge)
-            force, moment = load.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation)
-            forces += force
-            moments += moment
-            # print('load_after:', force, moment)
-            # print()
+        if self.loads:
+            for load in self.loads:
+                force = Vector(0,0,0)
+                moment = Vector(0,0,0)
+                # print('load_before:', load.position, load.charge)
+                # print(move, rotation)
+                force, moment = load.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation)
+                forces += force
+                moments += moment
+                # print('load_after:', forces, moments)
+                # print()
+
+        if self.elements:
+
+            for number, element in enumerate(self.elements):
+                force = Vector(0,0,0)
+                moment = Vector(0,0,0)
+                # print(element.moves)
+
+                force, moment = element.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation)
+
+                print(number, element.name, force, moment)
+                forces += force
+                moments += moment
+                # print('total load: ', forces, moments)
+
 
         return [forces, moments]
 

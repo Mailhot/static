@@ -107,14 +107,6 @@ rack_base.rotate(Rotation(gamma=rod_rack_angle))
 rod_rack.loads.append(rack_base)
 base.elements.append(rod_rack.move(Vector(-40, -10, 26)))
 
-
-
-
-
-
-
-
-
 max150.elements.append(base)
 # print('base reactions:', base.reactions(gravity=Gravity()))
 
@@ -148,9 +140,6 @@ feed_force_mast = Load(feed_force_mast_pos, Vector(holdback, 0), _type='force')
 head.loads.append(feed_force_mast)
 
 ## Swivel
-
-
-
 max150.elements.append(mast)
 
 mast.move(Vector(-8, 12)) # move the mast element to center it's origin at pivot point on mast-pivot hinge

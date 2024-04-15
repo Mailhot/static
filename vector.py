@@ -76,10 +76,11 @@ class Vector():
             vector = np.array([self.x, self.y, self.z])
             result = rotation_matrix.dot(vector)
             # print(result)
-            self.x = result[0]
-            self.y = result[1]
-            self.z = result[2]
-            return self
+            # self.x = result[0]
+            # self.y = result[1]
+            # self.z = result[2]
+            return Vector(result[0], result[1], result[2])
+            # return self
 
     
 class Rotation(Vector):
@@ -108,21 +109,24 @@ class Load():
         self.charge = charge
         self._type = _type
 
+    def __repr__(self):
+        return f'{self.position, self.charge, self._type}'
+
     def rotate(self, rotation=Rotation(0)):
         self.position.rotate(rotation)
         if self._type in ['force']: #moments and gravity does not rotate with displacement. 
             self.charge.rotate(rotation)
-        return self
+        return Load(self.position, self.charge, self._type)
 
     def move(self, x, y, z=0):
-        self.position.x += x
-        self.position.y += y
-        self.position.z += z
-        return self
+        # self.position.x += x
+        # self.position.y += y
+        # self.position.z += z
+        return Load(self.position+x, self.charge+y, self._type+z)
 
     def reactions(self, gravity=None, parent_move=None, parent_rotation=None): # Calculate reaction forces and moment at origin of load.
         # if the load is part of an element, the load must be moved to proper position in element upon inserting it. 
-
+        print(self)
         # Need to apply rotation and then moves for the load to properly calculate it.
         final_charge = deepcopy(self.charge)
         final_position = deepcopy(self.position)
@@ -132,17 +136,19 @@ class Load():
 
         if parent_rotation not in [None, Rotation(0,0)]:
             # print('final_position before', final_position)
-            final_position.rotate(parent_rotation)
+            final_position = final_position.rotate(parent_rotation)
             # print('final_position after', final_position)
             if self._type == 'force':
-                final_charge.rotate(parent_rotation)
+                final_charge = final_charge.rotate(parent_rotation)
                 # print(final_charge)
 
         if parent_move not in [None, Vector(0,0)]:
-            final_position += parent_move
+            final_position += parent_move.rotate(parent_rotation)
         
-        if self._type == 'force':
+        print('calculating force result:', final_position, final_charge)
 
+        if self._type == 'force':
+            
             moments = cross_prod(final_position, final_charge)
             forces = final_charge
 

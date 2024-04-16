@@ -62,7 +62,7 @@ class Vector():
         gamma = rotation.z
 
         if alpha == 0 and beta == 0 and gamma == 0:
-            print('no changes, need an angle to rotate!')
+            # print('no changes, need an angle to rotate!')
             return self
         else:
             # print('rotating', rotation)
@@ -126,7 +126,7 @@ class Load():
 
     def reactions(self, gravity=None, parent_move=None, parent_rotation=None): # Calculate reaction forces and moment at origin of load.
         # if the load is part of an element, the load must be moved to proper position in element upon inserting it. 
-        print(self)
+        # print(self)
         # Need to apply rotation and then moves for the load to properly calculate it.
         final_charge = deepcopy(self.charge)
         final_position = deepcopy(self.position)
@@ -145,7 +145,7 @@ class Load():
         if parent_move not in [None, Vector(0,0)]:
             final_position += parent_move.rotate(parent_rotation)
         
-        print('calculating force result:', final_position, final_charge)
+        # print('calculating force result:', final_position, final_charge)
 
         if self._type == 'force':
             
@@ -220,7 +220,7 @@ class Element():
             move = Vector(0,0)
 
         if len(self.rotations) > 1:
-            rotation = sum(self.rotations) #sum all rotation of the element
+            rotation = sum(self.rotations) # sum all rotation of the element
             # print('self.rotations', self.rotations)
         elif len(self.rotations) == 1:
             rotation = self.rotations[0]
@@ -247,7 +247,7 @@ class Element():
                 # print('load_after:', forces, moments)
                 # print()
 
-        if self.elements:
+        elif self.elements: # An element has either child elements or loads not both.
 
             for number, element in enumerate(self.elements):
                 force = Vector(0,0,0)

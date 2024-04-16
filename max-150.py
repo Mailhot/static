@@ -8,12 +8,12 @@ import sys
 
 # Variables
 # Head
-rotation_max_torque = 42000 # 3500 lb-ft (Positive is counterclockwise)
+rotation_max_torque = 42000 # 42000 lb-in (Positive is counterclockwise)
 mast_angle = 90 # range [95 - 0] degree, 0 degree is laying flat
 holdback = -11000 # Lbs [-11000 to 6000] feed up force) Minus is force directed toward bast foot
 
 feed_position = 160 # range [0-160] inch 0 is at bottom of mast
-mast_slide_position = 40 # [0-40] inch 0 is the mast slide raised up all the way
+mast_slide_position = 0 # [0-40] inch 0 is the mast slide raised up all the way
 
 machine_width = 72 # overall width of the mahine (preliminary guess)
 
@@ -40,6 +40,7 @@ rod_rack_angle = 85 # [between 30 and 85 degree] 90 is vertical
 max150 = Machine(gravity=Gravity()) # Set a machine with default gravity
 
 mast = Element(name='Mast Group')
+max150.elements.append(mast)
 
 # 2-1 Head (Sliding table)
 head = Element(name="Head", length=30, width=20, height=16)
@@ -58,51 +59,65 @@ torque_mast_pos = Vector(0, 12)
 torque_mast_load = Load(torque_mast_pos, Vector(rotation_max_torque, 0, 0), _type='moment')
 head.loads.append(torque_mast_load)
 
-# 2-2 Mast
+# 2-2 Mast 
 mast_mast = Element(name='Mast', length=160, width=16, height=16)
 mast_mast_cg_pos = Vector(80, 8)
 mast_mast_cg = Load(mast_mast_cg_pos, 6000, _type='mass')
 mast_mast.loads.append(mast_mast_cg)
-mast.elements.append(mast_mast)
+mast.elements.append(mast_mast.move(Vector(-10-mast_slide_position, 0))) # Move the mast 10 inch from bottom (where the pivot will likely be)
+
 head.move(Vector(feed_position, 16))
+
+
+# 2-3 Mast-Pivot
+mast_pivot = Element(name='Mast Pivot', length=40, width=22, height=16)
+pivot_mast_pos = Vector(16, -10)
+pivot_mast = Load(pivot_mast_pos, 800, _type='mass')
+mast_pivot.loads.append(pivot_mast)
+mast.elements.append(mast_pivot)
+
+mast.move(Vector(-8, 12)) # Center at pivot point
 mast.rotate(Rotation(gamma=mast_angle))
 
-# mast.elements.append(mast_mast.move(Vector(-10, 0)))
-
-# # 2-3 Mast-Pivot
-# mast_pivot = Element(name='Mast Pivot', length=40, width=22, height=16)
-# pivot_mast_pos = Vector(16, -10)
-# pivot_mast = Load(pivot_mast_pos, 800, _type='mass')
-# mast_pivot.loads.append(pivot_mast)
-# mast.elements.append(mast_pivot)
-
-# mast.move(Vector(-6, 0)) # Move mast away from pivot
-# mast.move(Vector(-8, 12)) # Center at pivot point
-
-print('total reactions:', mast.reactions(gravity=Gravity()))
-
-
-#mast.elements.append(head.move(Vector(feed_position, 16)))
-
+print('equivalent loads:', mast.reactions(gravity=Gravity()))
 
 
 
 # # We add the mast loads laying down and will rotate it once all components are added (instead of rotating each components)
 
 
-
-
-
 # ## Swivel
-# max150.elements.append(mast)
 
-# mast.move(Vector(-8, 12)) # move the mast element to center it's origin at pivot point on mast-pivot hinge
-# mast.rotate(Rotation(gamma=90)) # It's important to rotate before moving as you are rotating around the moved origin
+
+
 # mast.move(Vector(-7.15, 60)) # move the mast element to the base-pivot point in the machine referential
 
 
 
-# base = Element(name='Base Group')
+
+base = Element(name='Base Group')
+max150.elements.append(base)
+
+# 1-3
+pivot_base = Element(name='Base Pivot', length=36, width=24, height=36)
+pivot_base_cg_pos = Vector(16, 16)
+pivot_base_cg = Load(pivot_base_cg_pos, 2000, _type='mass')
+pivot_base.loads.append(pivot_base_cg)
+base.elements.append(pivot_base)
+mast.move(Vector(8, 24)) # Move the mast assy to center at the base-pivot point
+# base.elements.append(pivot_base.move(Vector(-15.15, 36, 0))) # the mast base is positioned at -3, 15 in the base element
+
+# 1-2
+platform = Element(name='Platform', length=120, width=72, height=6)
+platform_pos = Vector(60, 3)
+platform_cg = Load(platform_pos, 2000, _type='mass')
+platform.loads.append(platform_cg)
+base.elements.append(platform)
+pivot_base.move(Vector(0, 6))
+mast.move(Vector(0, 6))
+
+# base.elements.append(platform.move(Vector(-15.15, 30, 0))) # move platform in base referential and move it in place.
+
 
 # # Track 308 (this is for the 2 tracks)
 # # 1-
@@ -119,19 +134,9 @@ print('total reactions:', mast.reactions(gravity=Gravity()))
 # # print(moved_track.moves)
 # base.elements.append(moved_track)
 
-# # 2-
-# platform = Element(name='Platform', length=120, width=72, height=6)
-# platform_pos = Vector(60, 3)
-# platform_cg = Load(platform_pos, 2000, _type='mass')
-# platform.loads.append(platform_cg)
-# base.elements.append(platform.move(Vector(-15.15, 30, 0))) # move platform in base referential and move it in place.
 
-# # 3-
-# pivot_base = Element(name='Base Pivot', length=36, width=24, height=36)
-# pivot_base_cg_pos = Vector(16, 16)
-# pivot_base_cg = Load(pivot_base_cg_pos, 2000, _type='mass')
-# pivot_base.loads.append(pivot_base_cg)
-# base.elements.append(pivot_base.move(Vector(-15.15, 36, 0))) # the mast base is positioned at -3, 15 in the base element
+
+
 
 # # 4- Engine
 # # We plan on using CAT C3.6 74Hp for now (took a bigger engine to leave plase in case we need it)
@@ -183,7 +188,7 @@ print('total reactions:', mast.reactions(gravity=Gravity()))
 ## mast_alone = copy.deepcopy(mast) # Take a snapshot of the mast to make calculation on solely this portion.
 print('')
 reactions = max150.reactions()
-print('reactions:', reactions)
+print('Equivalent Load:', reactions)
 
 
 # mast_alone.move(Vector(-7.15, 60))

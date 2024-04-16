@@ -8,9 +8,16 @@ import sys
 
 # Variables
 # Head
-rotation_max_torque = 42000 # 42000 lb-in (Positive is counterclockwise)
-mast_angle = 90 # range [95 - 0] degree, 0 degree is laying flat
-holdback = -11000 # Lbs [-11000 to 6000] feed up force) Minus is force directed toward bast foot
+
+# # Case 1 - 90 deg, mast slide up, feed up, torque max clockwise, feed up max
+# rotation_max_torque = 42000 # 42000 lb-in (Positive is counterclockwise)
+# mast_angle = 90 # range [95 - 0] degree, 0 degree is laying flat
+# holdback = -11000 # Lbs [-11000 to 6000] feed up force) Minus is force directed toward bast foot
+
+# Case 2 - 0 deg, mast slide up, feed up
+rotation_max_torque = 0 # 42000 lb-in (Positive is counterclockwise)
+mast_angle = 0 # range [95 - 0] degree, 0 degree is laying flat
+holdback = 0 # Lbs [-11000 to 6000] feed up force) Minus is force directed toward bast foot
 
 feed_position = 160 # range [0-160] inch 0 is at bottom of mast
 mast_slide_position = 0 # [0-40] inch 0 is the mast slide raised up all the way
@@ -79,7 +86,7 @@ mast.elements.append(mast_pivot)
 mast.move(Vector(-8, 12)) # Center at pivot point
 mast.rotate(Rotation(gamma=mast_angle))
 
-print('equivalent loads:', mast.reactions(gravity=Gravity()))
+# print('equivalent loads:', mast.reactions(gravity=Gravity()))
 
 
 
@@ -104,7 +111,7 @@ pivot_base_cg_pos = Vector(16, 16)
 pivot_base_cg = Load(pivot_base_cg_pos, 2000, _type='mass')
 pivot_base.loads.append(pivot_base_cg)
 base.elements.append(pivot_base)
-mast.move(Vector(8, 24)) # Move the mast assy to center at the base-pivot point
+mast.offset.move(Vector(8, 24)) # Move the mast assy to center at the base-pivot point
 # base.elements.append(pivot_base.move(Vector(-15.15, 36, 0))) # the mast base is positioned at -3, 15 in the base element
 
 # 1-2
@@ -114,68 +121,77 @@ platform_cg = Load(platform_pos, 2000, _type='mass')
 platform.loads.append(platform_cg)
 base.elements.append(platform)
 pivot_base.move(Vector(0, 6))
-mast.move(Vector(0, 6))
+mast.offset.move(Vector(0, 6))
+
 
 # base.elements.append(platform.move(Vector(-15.15, 30, 0))) # move platform in base referential and move it in place.
 
 
 # # Track 308 (this is for the 2 tracks)
-# # 1-
+# # 1-1
 # track = Element(name='track pair', length=track_length, width=machine_width, height=track_height)
 # track_z_position = (machine_width/2)-(track_width/2)
 # track_l_cg_pos = Vector(57.15, 14, track_z_position) # position of the element load in it's own referential xy
 # track_r_cg_pos = Vector(57.15, 14, -track_z_position) # position of the element load in it's own referential xy
 
-# track_cg_l = Load(track_l_cg_pos, 2000, _type='mass') # load details (this one is mass only)
-# track_cg_r = Load(track_r_cg_pos, 2000, _type='mass')
+# track_cg_l = Load(track_l_cg_pos, track_mass/2, _type='mass') # load details (this one is mass only)
+# track_cg_r = Load(track_r_cg_pos, track_mass/2, _type='mass')
 # track.loads.append(track_cg_l) # add the load to the base referential loads
 # track.loads.append(track_cg_r) # add the load to the base referential loads
-# moved_track = track.move(Vector(-12.3, 0, 0)) 
+
 # # print(moved_track.moves)
-# base.elements.append(moved_track)
+# base.elements.append(track)
+# platform.move(Vector(0, 30))
+# pivot_base.move(Vector(0, 30))
+# mast.offset.move(Vector(0, 30))
+
+# # Move mast and base to the track origin
+# mast.offset.move(Vector(-15, 0))
+# base.offset.move(Vector(-15, 0))
 
 
 
 
+# 4- Engine
+# We plan on using CAT C3.6 74Hp for now (took a bigger engine to leave plase in case we need it)
+engine = Element(name='Engine', length=26.8, width=22.2, height=33.7)
+engine_base_pos = Vector(13.4, 16.85, 0)
+engine_base = Load(engine_base_pos, 840, _type='mass')
+engine.loads.append(engine_base)
+base.elements.append(engine.move(Vector(30, 36, 0)))
 
-# # 4- Engine
-# # We plan on using CAT C3.6 74Hp for now (took a bigger engine to leave plase in case we need it)
-# engine = Element(name='Engine', length=26.8, width=22.2, height=33.7)
-# engine_base_pos = Vector(13.4, 16.85, 0)
-# engine_base = Load(engine_base_pos, 840, _type='mass')
-# engine.loads.append(engine_base)
-# base.elements.append(engine.move(Vector(30, 36, 0)))
 
+# 5 - Pumps (2x tandem K3VL60)
+# Approx dimensions
+hyd_pumps = Element(name='Hydraulic Pumps', length=16, width=10, height=10)
+hyd_pumps_base_pos = Vector(8, 5)
+hyd_pumps_base = Load(hyd_pumps_base_pos, 110, _type='mass')
+hyd_pumps.loads.append(hyd_pumps_base)
+base.elements.append(hyd_pumps.move(Vector(6, 36, 0)))
 
-# # 5 - Pumps (2x tandem K3VL60)
-# # Approx dimensions
-# hyd_pumps = Element(name='Hydraulic Pumps', length=16, width=10, height=10)
-# hyd_pumps_base_pos = Vector(8, 5)
-# hyd_pumps_base = Load(hyd_pumps_base_pos, 110, _type='mass')
-# hyd_pumps.loads.append(hyd_pumps_base)
-# base.elements.append(hyd_pumps.move(Vector(6, 36, 0)))
+# 6 - Jacks (4x of them)
+jacks = Element(name='Jacks', length=120, width=72, height=40)
+jacks_cg_pos = Vector(60, 25)
+jacks_cg = Load(jacks_cg_pos, 800, _type='mass')
+jacks.loads.append(jacks_cg)
+base.elements.append(jacks.move(Vector(0, 12, 0)))
 
-# # 6 - Jacks (4x of them)
-# jacks = Element(name='Jacks', length=120, width=72, height=40)
-# jacks_cg_pos = Vector(60, 25)
-# jacks_cg = Load(jacks_cg_pos, 800, _type='mass')
-# jacks.loads.append(jacks_cg)
-# base.elements.append(jacks.move(Vector(-15.15, 12, 0)))
+# 7 - Hydraulic Tank
+hydraulic_tank = Element(name='Hydraulic Tank', length=42, width=8, height=24)
+tank_cg_pos = Vector(21, 12)
+tank_cg = Load(tank_cg_pos, 375, _type='mass')
+hydraulic_tank.loads.append(tank_cg)
+base.elements.append(hydraulic_tank.move(Vector(60, 50, -16)))
 
-# # 7 - Hydraulic Tank
-# hydraulic_tank = Element(name='Hydraulic Tank', length=42, width=8, height=24)
-# tank_cg_pos = Vector(21, 12)
-# tank_cg = Load(tank_cg_pos, 375, _type='mass')
-# hydraulic_tank.loads.append(tank_cg)
-# base.elements.append(hydraulic_tank.move(Vector(60, 50, -16)))
+# 8 - rod rack 
+rod_rack = Element(name='Rod Rack', length=130, width=20, height=24)
+rack_base_pos = Vector(65, 12)
+rack_base = Load(rack_base_pos, 4300, _type='mass')
+rack_base.rotate(Rotation(gamma=rod_rack_angle))
 
-# # 8 - rod rack 
-# rod_rack = Element(name='Rod Rack', length=130, width=20, height=24)
-# rack_base_pos = Vector(65, 12)
-# rack_base = Load(rack_base_pos, 4300, _type='mass')
-# rack_base.rotate(Rotation(gamma=rod_rack_angle))
-# rod_rack.loads.append(rack_base)
-# base.elements.append(rod_rack.move(Vector(-40, -10, 26)))
+rod_rack.loads.append(rack_base)
+rod_rack.move(Vector(-40, 10, 15))
+base.elements.append(rod_rack)
 
 # max150.elements.append(base)
 # # print('base reactions:', base.reactions(gravity=Gravity()))

@@ -22,10 +22,11 @@ class Vector():
         return self
 
     def __radd__(self, other):
-        if other == 0:
+        if other in [0, Vector(0,0)]:
             return self
         else:
-            return self.__add__(other)
+            return other.__add__(self)
+
 
     def __sub__(self, other): 
         self.x -= other.x
@@ -54,6 +55,12 @@ class Vector():
         else:
             return False
 
+    def move(self, move):
+        # Move vector like add
+        self.x += move.x
+        self.y += move.y
+        self.z += move.z
+        return Vector(self.x+move.x, self.y+move.y, self.z+move.z)
 
     def rotate(self, rotation):
         # angle in degree
@@ -79,7 +86,7 @@ class Vector():
             # self.x = result[0]
             # self.y = result[1]
             # self.z = result[2]
-            return Vector(result[0], result[1], result[2])
+            return Vector(round(result[0], 2), round(result[1], 2), round(result[2], 2))
             # return self
 
     
@@ -124,14 +131,15 @@ class Load():
         # self.position.z += z
         return Load(self.position+x, self.charge+y, self._type+z)
 
-    def reactions(self, gravity=None, parent_move=None, parent_rotation=None): # Calculate reaction forces and moment at origin of load.
+    def reactions(self, gravity=None, parent_move=None, parent_rotation=None, offset=None): # Calculate reaction forces and moment at origin of load.
         # if the load is part of an element, the load must be moved to proper position in element upon inserting it. 
         # print(self)
         # Need to apply rotation and then moves for the load to properly calculate it.
         final_charge = deepcopy(self.charge)
         final_position = deepcopy(self.position)
 
-        # print(final_position)
+        # print('fp, pm', final_position, parent_move)
+        # print('offset', offset)
 
 
         if parent_rotation not in [None, Rotation(0,0)]:
@@ -146,6 +154,9 @@ class Load():
             final_position += parent_move.rotate(parent_rotation)
         
         # print('calculating force result:', final_position, final_charge)
+
+        if offset not in [None, Vector(0,0)]:
+            final_position += deepcopy(offset)
 
         if self._type == 'force':
             
@@ -171,8 +182,10 @@ class Gravity(Vector):
         
 
 class Element():
-    def __init__(self, length=0, width=0, height=0, loads=None, name=None, elements=None):
-        """Basic element class for calculation various thing on an element assembly"""
+    def __init__(self, length=0, width=0, height=0, loads=None, name=None, elements=None, offset=None):
+        """Basic element class for calculation various thing on an element assembly
+        offset: a vector to offset the origin of a group without affecting the rotations
+        """
         self.length = length
         self.width = width
         self.height = height
@@ -189,6 +202,8 @@ class Element():
         else:
             self.elements = elements
 
+        self.offset = Vector(0, 0)
+
     def rotate(self, rotation):
         # Rotate the element from it's origin
         # rotation = Rotation(alpha, beta, gamma)
@@ -200,21 +215,28 @@ class Element():
         self.moves.append(move)
         return self
 
-    def reactions(self, gravity=None, parent_move=None, parent_rotation=None):
+    def reactions(self, gravity=None, parent_move=None, parent_rotation=None, offset=None):
         forces = Vector(0,0,0)
         moments = Vector(0,0,0)
         move = Vector(0,0)
         rotation = Rotation(0,0)
         # print('-', self.name)
+        # print(parent_move, parent_rotation)
 
-        # print('element rotation and moves:', self.rotations, self.moves)
+        # print('element rotation and moves:', self.name, self.rotations, self.moves)
+
+        if offset not in [None, Vector(0, 0)]:
+            offset_ = deepcopy(self.offset + offset)
+
+        else:
+            offset_ = deepcopy(self.offset)
         
         if len(self.moves) > 1:
             # print('self.moves', self.moves)
             move = sum(self.moves) # sum all moves of the element
 
         elif len(self.moves) == 1:
-            move = self.moves[0]
+            move = deepcopy(self.moves[0])
 
         else:
             move = Vector(0,0)
@@ -223,7 +245,7 @@ class Element():
             rotation = sum(self.rotations) # sum all rotation of the element
             # print('self.rotations', self.rotations)
         elif len(self.rotations) == 1:
-            rotation = self.rotations[0]
+            rotation = deepcopy(self.rotations[0])
 
         else:
             rotation = Rotation(0, 0)
@@ -241,20 +263,20 @@ class Element():
                 moment = Vector(0,0,0)
                 # print('load_before:', load.position, load.charge)
                 # print(move, rotation)
-                force, moment = load.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation)
+                force, moment = load.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation,offset=offset_)
                 forces += force
                 moments += moment
                 # print('load_after:', forces, moments)
                 # print()
 
-        elif self.elements: # An element has either child elements or loads not both.
+        if self.elements: # TODO: ?An element has either child elements or loads not both.
 
             for number, element in enumerate(self.elements):
                 force = Vector(0,0,0)
                 moment = Vector(0,0,0)
                 # print(element.moves)
 
-                force, moment = element.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation)
+                force, moment = element.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation,offset=offset_)
 
                 print(number, element.name, force, moment)
                 forces += force
@@ -298,7 +320,7 @@ class Machine():
         for number, element in enumerate(self.elements):
             force = Vector(0,0)
             moment = Vector(0,0)
-            force, moment = element.reactions(gravity=self.gravity)
+            force, moment = element.reactions(gravity=Gravity(), offset=None)
 
             
             print(number, element.name, force, moment)

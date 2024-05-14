@@ -51,7 +51,7 @@ max150.elements.append(mast)
 
 # 2-1 Head (Sliding table)
 head = Element(name="Head", length=30, width=20, height=16)
-head_mast_pos = Vector(12, 12)
+head_mast_pos = Vector(10, 12)
 head_mast = Load(head_mast_pos, 600, _type='mass')
 head.loads.append(head_mast)
 
@@ -154,9 +154,9 @@ mast.offset.move(Vector(0, 6))
 
 # 4- Engine
 # We plan on using CAT C3.6 74Hp for now (took a bigger engine to leave plase in case we need it)
-engine = Element(name='Engine', length=26.8, width=22.2, height=33.7)
+engine = Element(name='Engine', length=46.3, width=22.2, height=33.7)
 engine_base_pos = Vector(13.4, 16.85, 0)
-engine_base = Load(engine_base_pos, 840, _type='mass')
+engine_base = Load(engine_base_pos, 1214, _type='mass')
 engine.loads.append(engine_base)
 base.elements.append(engine.move(Vector(30, 36, 0)))
 

@@ -4,6 +4,8 @@ from math import sin, cos, radians
 from copy import deepcopy
 import turtle
 
+
+
 class Vector():
     """A simple vector class to wrap the numpy vector functions"""
     def __init__(self, x, y, z=0):
@@ -17,23 +19,17 @@ class Vector():
         return f"({self.x}, {self.y}, {self.z})"
 
     def __add__(self, other):
-        self.x += other.x
-        self.y += other.y
-        self.z += other.z
-        return self
+        return Vector(self.x+other.x, self.y+other.y, self.z+other.z)
 
     def __radd__(self, other):
         if other in [0, Vector(0,0)]:
-            return self
+            return Vector(self.x, self.y, self.z)
         else:
             return other.__add__(self)
 
 
     def __sub__(self, other): 
-        self.x -= other.x
-        self.y -= other.y
-        self.z -= other.z
-        return self
+        return Vector(self.x-other.x, self.y-other.y, self.z-other.z)
 
     def __neg__(self):
         return Vector(-self.x, -self.y, -self.z)
@@ -81,6 +77,7 @@ class Vector():
                                         [cos(beta)*sin(gamma), sin(alpha)*sin(beta)*sin(gamma)+cos(alpha)*cos(gamma), cos(alpha)*sin(beta)*sin(gamma)-sin(alpha)*cos(gamma)], 
                                         [-sin(beta), sin(alpha)*cos(beta), cos(alpha)*cos(beta)]
                                         ])
+
             vector = np.array([self.x, self.y, self.z])
             result = rotation_matrix.dot(vector)
             # print(result)
@@ -95,6 +92,18 @@ class Rotation(Vector):
     """A rotation class, same as vector but with values in degree"""
     def __init__(self, alpha=0, beta=0, gamma=0):
         super().__init__(x=alpha, y=beta, z=gamma)
+
+    # def __add__(self, other):
+    #     self.alpha += other.alpha
+    #     self.beta += other.beta
+    #     self.gamma += other.gamma
+    #     return self
+
+    # def __radd__(self, other):
+    #     if other in [0, Rotation(0,0,0)]:
+    #         return self
+    #     else:
+    #         return other.__add__(self)
 
     def rotate(self, alpha=0, beta=0, gamma=0):
         print('this is a rotation vector, cant be rotated, simply add angles to it')
@@ -132,7 +141,8 @@ class Load():
         # self.position.z += z
         return Load(self.position+x, self.charge+y, self._type+z)
 
-    def reactions(self, gravity=None, parent_move=None, parent_rotation=None, offset=None): # Calculate reaction forces and moment at origin of load.
+    def reactions(self, gravity=None, parent_move=None, parent_rotation=None, offset=None): 
+        # Calculate reaction forces and moment at origin of load.
         # if the load is part of an element, the load must be moved to proper position in element upon inserting it. 
         # print(self)
         # Need to apply rotation and then moves for the load to properly calculate it.
@@ -154,7 +164,7 @@ class Load():
         if parent_move not in [None, Vector(0,0)]:
             final_position += parent_move.rotate(parent_rotation)
         
-        # print('calculating force result:', final_position, final_charge)
+        # print('calculating force result:', final_position,  final_charge)
 
         if offset not in [None, Vector(0,0)]:
             final_position += deepcopy(offset)
@@ -184,7 +194,8 @@ class Gravity(Vector):
 
 class Element():
     def __init__(self, length=0, width=0, height=0, loads=None, name=None, elements=None, offset=None):
-        """Basic element class for calculation various thing on an element assembly
+        """
+        Basic element class for calculation various thing on an element assembly
         offset: a vector to offset the origin of a group without affecting the rotations
         """
         self.length = length
@@ -261,15 +272,15 @@ class Element():
         # print('parent move and rotation:', move, rotation)
         if self.loads:
             for load in self.loads:
-                shape2 = turtle.Turtle()
-                shape2.color = ("blue")
+                
+                # shape2.color = ("blue")
                 force = Vector(0,0,0)
                 moment = Vector(0,0,0)
                 # print('load_before:', load.position, load.charge)
                 # print(move, rotation)
                 force, moment, position = load.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation,offset=offset_)
-                if load._type == "mass":
-                    turtle_2d_draw(shape2, self, position=position, rotation=rotation)
+                # if load._type == "mass":
+                #     turtle_2d_draw(shape2, self, position=position, rotation=rotation)
                 forces += force
                 moments += moment
                 # print('load_after:', forces, moments)
@@ -295,10 +306,38 @@ class Element():
 
         return [forces, moments, position]
 
+    def turtle_2d_draw(self, screen, parent_move=None, parent_rotation=None, offset=None):
+        
+        if parent_move == None:
+            parent_move = Vector(0, 0)
+        if parent_rotation == None:
+            parent_rotation = Rotation(0, 0, 0)
+        if offset == None:
+            offset = Vector(0, 0)
+
+        print(self.name)
+        for element in self.elements: #this is the second layer, groupe element
+            load_position = None
+            print(element.name)
 
 
+            if len(element.loads) > 0:
+                for load in element.loads:
+                    if load._type == 'mass':
+                        load_position = load.position
+                        print('load_position', load.position)
+                    else:
+                        continue
 
+            # We only draw the element with mass load, the shape is based on the cg position
+            else:
+                print('skipped element, no mass found')
+                continue
+            move_rot = {0: {'move': parent_move, 'rotation': parent_rotation},
+                        1: {'move': sum(self.moves), 'rotation': sum(self.rotations)},}
 
+            turtle_draw(screen, element, load_position, parent_move=parent_move, parent_rotation=parent_rotation, offset=self.offset+offset)
+        
 class Machine():
     """A machine class that can contain multiple elements (that moves relatives to each other), a gravity member
     elements: element class that apply to the machine
@@ -326,8 +365,7 @@ class Machine():
     def reactions(self):
         forces = Vector(0, 0, 0)
         moments = Vector(0, 0, 0)
-        screen1 = turtle.Screen()
-        screen1.setup(width = 0.25, height = 0.5, startx=None, starty=None)
+
 
         # #remove close,minimaze,maximaze buttons:
         # canvas = screen1.getcanvas()
@@ -335,78 +373,118 @@ class Machine():
         # root.overrideredirect(1)
 
         for number, element in enumerate(self.elements):
-            force = Vector(0,0)
-            moment = Vector(0,0)
-            shape1 = turtle.Turtle()
-            shape1.color = ("black")
+            # force = Vector(0,0)
+            # moment = Vector(0,0)
+            # shape1 = turtle.Turtle()
+            # shape1.color = ("black")
 
             
-            force, moment, position = element.reactions(gravity=Gravity(), offset=None)
-            # turtle_2d_draw(shape1, element, position)
+            force, moment, mass_positions = element.reactions(gravity=Gravity(), offset=None)
+            # if load._type == "mass":
+            #     turtle_2d_draw(shape2, self, position=position, rotation=rotation)
             
             print(number, element.name, force, moment)
             forces += force
             moments += moment
 
-        turtle.done()
-        # print()
-        # print('-------------------------------')
-        # print('[(force vector), (moment vector)]')
         return [forces, moments]
 
 
+    def turtle_2d_draw(self, offset=None):
 
-def turtle_2d_draw(shape, element, position=None, rotation=None):
+        screen1, shape1 = init_turtle()
 
-    load_position = None
-    print(element.name)
 
-    for load in element.loads:
-        if load._type == 'mass':
-            load_position = load.position
-            print('load_position', load.position)
-        else:
-            continue
+        for element in self.elements:
+            if len(element.moves) >=1:
+                parent_moves = sum(element.moves)
+            else:
+                parent_moves = Vector(0, 0)
 
-    # We only draw the element with mass load, the shape is based on the cg position
-    if load_position == None:
-        print('skipped, no mass found')
-        return 'skipped, no mass found'
+            if len(element.rotations) >=1:
+                parent_rotations = sum(element.rotations)
+            else:
+                parent_rotations = Rotation(0,0,0)
 
-    if rotation == None:
-        rotation = Rotation(0, 0, 0)
-    if position == None: 
-        position = Vector(0, 0)
+            element.turtle_2d_draw(screen=screen1, parent_move=parent_moves, parent_rotation=parent_rotations)
 
-    # print(position.x, load_position.x)
-    # print(position.y, load_position.y)
+        print('machine printed')
+        turtle.exitonclick()
 
-    
-    x = position.x  - element.length/2
-    y = position.y  - element.height/2
-    print('turtle_draw', element.length, element.height, x, y, rotation)
-    # angle = rotation.gamma
+
+def init_turtle():
+    screen1 = turtle.Screen()
+    screen1.setup(width = 0.25, height = 0.5, startx=0, starty=0)
+    shape = turtle.Turtle()
+    shape.color = ("blue")
+    shape.goto(0, 100)
     shape.penup()
-    shape.goto(x, y)
+    shape.goto(0, 0)
     shape.pendown()
-    pts = [Vector(0, element.height), Vector(element.length, element.height), Vector(element.length, 0), Vector(0, 0)]
+    shape.goto(100, 0)
+    shape.penup()
+    shape.goto(0, 0)
+    return screen1, shape
+
+
+
+def turtle_draw(screen, element, load_position, parent_move=None, parent_rotation=None, offset=None):
+
+    if parent_move == None:
+        parent_move = Vector(0, 0)
+    if parent_rotation == None:
+        parent_rotation = Rotation(0, 0, 0)
+    if offset == None:
+        offset = Vector(0, 0)
+
+    # # Do the parent changes (move first)
+    # load_position += parent_move
+    # total_rotation = parent_rotation 
+    # pos_rotated = load_position.rotate(parent_rotation+sum(self.rotations))
+
+    # Add self moves and rotation as parent moves and rotation.
+    element_move = Vector(0, 0)
+    element_rotation = Rotation(0, 0)
+    if len(element.moves) >= 1:
+        element_move = sum(element.moves)
+
+    if len(element.rotations) >=  1:
+        element_rotation = sum(element.rotations)
+
+
+    element_move_rotated = ((load_position + element_move).rotate(element_rotation) + parent_move).rotate(parent_rotation)
+
+    total_rotation = element_rotation + parent_rotation
+    print('turtle_draw', element.length, element.height, element_move_rotated.x, element_move_rotated.y, total_rotation)
+    # angle = rotation.gamma
+    # shape.penup()
+    # shape.goto(x, y)
+    # shape.pendown()
+
+    # These are the displacement that will be rotated later
+    pts = [Vector(-element.length/2, -element.height/2), Vector(0, element.height), Vector(element.length, 0), Vector(0, -element.height), Vector(-element.length, 0)]
     
+    shape = turtle.Turtle()
+    shape.color = ("blue")
 
     # rotated_pts = 
+
+    shape.penup()
+    current_position = element_move_rotated
     for point in pts:
-        point.rotate(rotation)
-        shape.goto(point.x + x, point.y + y)
-
-    input('continue?')
-
-    # shape.goto(0, 10)
-    # shape.goto(10, 10)
-    # shape.goto(10, 0)
-    # shape.goto(0, 0)
+        current_position += point
+        current_position_rotated = current_position.rotate(element_rotation)
+        current_position_rotated = current_position_rotated.rotate(parent_rotation)
+        
+        shape.goto(current_position_rotated.x + offset.x, current_position_rotated.y + offset.y)
+        shape.pendown()
 
 
 
-        # 3 - Pivot
+
+
+
+# 3 - Pivot
 # bl03 = Vector(-1, 7)
 # bl3 = Vector(7, 7)
 # bl3.rotate(gamma=mast_angle)

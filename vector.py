@@ -13,10 +13,16 @@ class Vector():
         self.x = x
         self.y = y
         self.z = z
+        self.xr = x
+        self.yr = y 
+        self.zr = z 
 
 
     def __repr__(self):
-        return f"({self.x}, {self.y}, {self.z})"
+        return f"Vector({self.x}, {self.y}, {self.z})"
+
+    def __str__(self):
+        return f"Vector({self.x}, {self.y}, {self.z})"
 
     def __add__(self, other):
         return Vector(self.x+other.x, self.y+other.y, self.z+other.z)
@@ -26,7 +32,6 @@ class Vector():
             return Vector(self.x, self.y, self.z)
         else:
             return other.__add__(self)
-
 
     def __sub__(self, other): 
         return Vector(self.x-other.x, self.y-other.y, self.z-other.z)
@@ -84,8 +89,11 @@ class Vector():
             # self.x = result[0]
             # self.y = result[1]
             # self.z = result[2]
-            return Vector(round(result[0], 2), round(result[1], 2), round(result[2], 2))
-            # return self
+            self.x = round(result[0], 2)
+            self.y = round(result[1], 2)
+            self.z = round(result[2], 2)
+            return self
+            
 
     
 class Rotation(Vector):
@@ -127,7 +135,7 @@ class Load():
         self._type = _type
 
     def __repr__(self):
-        return f'{self.position, self.charge, self._type}'
+        return f'Load{self.position, self.charge, self._type}'
 
     def rotate(self, rotation=Rotation(0)):
         self.position.rotate(rotation)
@@ -139,7 +147,7 @@ class Load():
         # self.position.x += x
         # self.position.y += y
         # self.position.z += z
-        return Load(self.position+x, self.charge+y, self._type+z)
+        return Load(self.position+Vector(x, y, z), self.charge, self._type)
 
     def reactions(self, gravity=None, parent_move=None, parent_rotation=None, offset=None): 
         # Calculate reaction forces and moment at origin of load.
@@ -162,7 +170,7 @@ class Load():
                 # print(final_charge)
 
         if parent_move not in [None, Vector(0,0)]:
-            final_position += parent_move.rotate(parent_rotation)
+            final_position += parent_move #.rotate(parent_rotation)
         
         # print('calculating force result:', final_position,  final_charge)
 
@@ -193,7 +201,7 @@ class Gravity(Vector):
         
 
 class Element():
-    def __init__(self, length=0, width=0, height=0, loads=None, name=None, elements=None, offset=None):
+    def __init__(self, length=0, width=0, height=0, loads=None, name=None, elements=None, offset=None, rotations=None, moves=None):
         """
         Basic element class for calculation various thing on an element assembly
         offset: a vector to offset the origin of a group without affecting the rotations
@@ -202,19 +210,22 @@ class Element():
         self.width = width
         self.height = height
         self.name = name
+        if loads is None:
+            loads = []
+        self.loads = loads
+        if moves is None:
+            moves = []
+        self.moves = []
+        if rotations is None:
+            rotations = []
+        self.rotations = rotations
+        if elements is None:
+            elements = []
+        self.elements = elements
 
-        if loads == None:
-            self.loads = list()
-        else:
-            self.loads = loads
-        self.moves = list()
-        self.rotations = list()
-        if elements == None:
-            self.elements = list()
-        else:
-            self.elements = elements
-
-        self.offset = Vector(0, 0)
+        if offset is None:
+            offset = Vector(0, 0)
+        self.offset = offset
 
     def rotate(self, rotation):
         # Rotate the element from it's origin
@@ -231,12 +242,11 @@ class Element():
         forces = Vector(0,0,0)
         moments = Vector(0,0,0)
         positions = Vector(0,0,0)
-        move = Vector(0,0)
-        rotation = Rotation(0,0)
-        # print('-', self.name)
-        # print(parent_move, parent_rotation)
-
-        # print('element rotation and moves:', self.name, self.rotations, self.moves)
+        # move = Vector(0,0)
+        # rotation = Rotation(0,0)
+        print('-', self.name)
+        print('parent move and rotation', parent_move, parent_rotation)
+        print('element moves and rotations:', self.name, self.moves, self.rotations)
 
         if offset not in [None, Vector(0, 0)]:
             offset_ = deepcopy(self.offset + offset)
@@ -263,48 +273,37 @@ class Element():
         else:
             rotation = Rotation(0, 0)
 
+        # TODO: The moves will be affected by parent rotations. 
         if parent_move != None:
+
             move += parent_move
+
         if parent_rotation != None:
+            # rotate the move based on parent rotation
+            
             rotation += parent_rotation
+            move.rotate(rotation)
+            # print('rotated move', move)
 
         # print()
-        # print('parent move and rotation:', move, rotation)
+        # print('parent move and rotation:', parent_move, parent_rotation)
         if self.loads:
             for load in self.loads:
                 
-                # shape2.color = ("blue")
-                force = Vector(0,0,0)
-                moment = Vector(0,0,0)
-                # print('load_before:', load.position, load.charge)
-                # print(move, rotation)
-                force, moment, position = load.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation,offset=offset_)
-                # if load._type == "mass":
-                #     turtle_2d_draw(shape2, self, position=position, rotation=rotation)
+                force, moment, position = load.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation, offset=offset_)
                 forces += force
                 moments += moment
-                # print('load_after:', forces, moments)
-                # print()
 
-        if self.elements: # TODO: ?An element has either child elements or loads not both.
+        elif self.elements: # TODO: ?An element has either child elements or loads not both.
             for number, element in enumerate(self.elements):
                 
-                force = Vector(0,0,0)
-                moment = Vector(0,0,0)
-                # print(element.moves)
-
-                
-
                 force, moment, position = element.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation,offset=offset_)
-                
-                print(number, element.name, force, moment)
+                print(number, element.name, force, moment, position)
                 forces += force
                 moments += moment
-                # positions += position
-                # print('total load: ', forces, moments)
-
 
         return [forces, moments, position]
+
 
     def turtle_2d_draw(self, screen, parent_move=None, parent_rotation=None, offset=None):
         
@@ -348,14 +347,13 @@ class Machine():
     """
 
     def __init__(self, elements=None, gravity=None):
-        if elements == None:
-            self.elements = list()
-        else:
-            self.elements = elements
-        if gravity == None:
-            self.gravity = Gravity()
-        else:
-            self.gravity = gravity
+
+        if not elements:
+            elements = []
+        if not gravity:
+            gravity = Gravity()
+        self.elements = elements
+        self.gravity = gravity
 
     def get_results(self, vector):
         # get a resulting force at a desired place of the model. 
@@ -365,16 +363,17 @@ class Machine():
     def reactions(self):
         forces = Vector(0, 0, 0)
         moments = Vector(0, 0, 0)
+        positions = Vector(0, 0)
 
 
         # #remove close,minimaze,maximaze buttons:
         # canvas = screen1.getcanvas()
         # root = canvas.winfo_toplevel()
         # root.overrideredirect(1)
-
+        # print(self.elements[0].name)
         for number, element in enumerate(self.elements):
-            # force = Vector(0,0)
-            # moment = Vector(0,0)
+            force = Vector(0,0)
+            moment = Vector(0,0)
             # shape1 = turtle.Turtle()
             # shape1.color = ("black")
 
@@ -385,9 +384,10 @@ class Machine():
             
             print(number, element.name, force, moment)
             forces += force
+            # positions += mass_positions
             moments += moment
 
-        return [forces, moments]
+        return {'forces': forces, "moments": moments}
 
 
     def turtle_2d_draw(self, offset=None):
@@ -463,20 +463,24 @@ def turtle_draw(screen, element, load_position, parent_move=None, parent_rotatio
 
     # These are the displacement that will be rotated later
     pts = [Vector(-element.length/2, -element.height/2), Vector(0, element.height), Vector(element.length, 0), Vector(0, -element.height), Vector(-element.length, 0)]
-    
+    print('pre rot points', pts)
     shape = turtle.Turtle()
     shape.color = ("blue")
 
-    # rotated_pts = 
-
     shape.penup()
     current_position = element_move_rotated
+    print('current_position', current_position)
     for point in pts:
-        current_position += point
-        current_position_rotated = current_position.rotate(element_rotation)
-        current_position_rotated = current_position_rotated.rotate(parent_rotation)
+        print('point before', point)
+        point.rotate(element_rotation).rotate(parent_rotation)
+        print('point after', point.xr, point.yr)
+    print(pts)
+    for point in pts:
+        # current_position += point
+        # current_position_rotated = current_position.rotate(element_rotation)
+        # current_position_rotated = current_position_rotated.rotate(parent_rotation)
         
-        shape.goto(current_position_rotated.x + offset.x, current_position_rotated.y + offset.y)
+        shape.goto(point.xr + offset.x, point.yr + offset.y)
         shape.pendown()
 
 

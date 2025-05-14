@@ -39,9 +39,6 @@ class App:
 
     def on_loop(self):
         self._display_surf.fill((211, 211, 211))
-        pygame.draw.circle(self._display_surf, self.colors['BLACK'], self.origin, 4)
-        pygame.draw.line(self._display_surf, self.colors['BLACK'], self.origin, (self.origin[0]+100, self.origin[1]))
-        pygame.draw.line(self._display_surf, self.colors['BLACK'], self.origin, (self.origin[0], self.origin[1]-100))
         # pygame.draw.rect(self._display_surf, self.colors['BLACK'], (200, 150, 100, 10))
         # print('items:', self.items)
         for item in self.items:
@@ -55,6 +52,9 @@ class App:
             bounds = surface1.get_rect(center = sum_list([item['center'], self.origin]))
             self._display_surf.blit(surface1, bounds)
             # surface1 = pygame.Surface([element.length, element.height])
+        pygame.draw.circle(self._display_surf, self.colors['BLACK'], self.origin, 4)
+        pygame.draw.line(self._display_surf, self.colors['BLACK'], self.origin, (self.origin[0]+100, self.origin[1]))
+        pygame.draw.line(self._display_surf, self.colors['BLACK'], self.origin, (self.origin[0], self.origin[1]-100))
 
         pygame.display.flip()
         self.clock.tick(10)
@@ -119,7 +119,16 @@ def system1():
     mast_slide_position = 40 # [0-40] inch 0 is the mast slide raised up all the way
     feed_position = 0 # range [0-160] inch 0 is at bottom of mast
     mast_angle = 60 # range [95 - 0] degree, 0 degree is laying flat
+    # Track cat 308
+    track_width = 26.1 # 308
+    track_length = 114.3
+    track_height = 26.1
+    track_ground_length = 89.7
+    track_mass = 4415 # [lbs] TODO: check with cat if mass is really for the 2 or per side
 
+    rod_rack_angle = 85 # [between 30 and 85 degree] 90 is vertical
+
+    machine_width = 72 # overall width of the mahine (preliminary guess)
 
     ## Components
     max100 = Machine(gravity=Gravity()) # Set a machine with default gravity
@@ -129,7 +138,7 @@ def system1():
 
     # 2-1 Head (Sliding table)
     head = Element(name="Head", length=30, width=20, height=16)
-    head_mast_pos = Vector(10, 12)
+    head_mast_pos = Vector(10, 8)
     head_mast = Load(head_mast_pos, 600, _type='mass')
     head.loads.append(head_mast)
     mast.elements.append(head)
@@ -150,10 +159,55 @@ def system1():
     mast_pivot.loads.append(pivot_mast)
     mast.elements.append(mast_pivot)
 
-    mast.offset = Vector(-8, -12) # Center at pivot point
+    mast.move(Vector(-8, 12)) # Center at pivot point
     
     mast.rotate(Rotation(gamma=mast_angle))
 
+
+    base = Element(name='Base Group')
+    max100.elements.append(base)
+    
+    # 1-3
+    pivot_base = Element(name='Base Pivot', length=36, width=24, height=36)
+    pivot_base_cg_pos = Vector(18, 18)
+    pivot_base_cg = Load(pivot_base_cg_pos, 2000, _type='mass')
+    pivot_base.loads.append(pivot_base_cg)
+    base.elements.append(pivot_base)
+    # mast.move(Vector(8, 24)) # Move the mast assy to center at the base-pivot point
+    base.elements.append(pivot_base.move(Vector(-15.15, -36, 0))) # the mast base is positioned at -3, 15 in the base element
+    
+    # 1-2
+    platform = Element(name='Platform', length=120, width=72, height=6)
+    platform_pos = Vector(60, 3)
+    platform_cg = Load(platform_pos, 2000, _type='mass')
+    platform.loads.append(platform_cg)
+    base.elements.append(platform)
+    pivot_base.move(Vector(10, 6))
+    # mast.offset.move(Vector(0, -6))
+
+
+    base.elements.append(platform.move(Vector(-5.15, -30, 0))) # move platform in base referential and move it in place.
+
+
+    # Track 308 (this is for the 2 tracks)
+    # 1-1
+    track = Element(name='track pair', length=track_ground_length, width=machine_width, height=track_height)
+    track_cg = Load(Vector(track_ground_length/2, track_ground_length/2), track_mass, _type='mass')
+    track.loads.append(track_cg)
+    
+    track.move(Vector(8, -88))
+    base.elements.append(track)
+    
+
+    engine = Element(name='Engine', length=46.3, width=22.2, height=33.7)
+    engine_base_pos = Vector(13.4, 16.85, 0)
+    engine_base = Load(engine_base_pos, 1226, _type='mass')
+    engine.loads.append(engine_base)
+    base.elements.append(engine.move(Vector(60, -26, 0)))
+
+    print('reactions:', max100.reactions())
+
+    # randomise colors
     items = max100.draw()
     color_key = list(App().colors.keys())
 

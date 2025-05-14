@@ -227,6 +227,10 @@ class Element():
             offset = Vector(0, 0)
         self.offset = offset
 
+    def __repr__(self):
+
+        return f"Element(length={self.length}, width={self.width}, height={self.height}, loads={self.loads}, name={self.name}, elements={self.elements}, offset={self.offset}, rotations={self.rotations}, moves={self.moves})"
+
     def rotate(self, rotation):
         # Rotate the element from it's origin
         # rotation = Rotation(alpha, beta, gamma)
@@ -305,8 +309,12 @@ class Element():
         return [forces, moments, position]
 
 
-    def turtle_2d_draw(self, screen, parent_move=None, parent_rotation=None, offset=None):
+    def turtle_2d_draw(self, screen=None, parent_move=None, parent_rotation=None, offset=None):
         
+
+        if screen == None:
+            screen1, shape1 = init_turtle()
+            screen = screen1
         if parent_move == None:
             parent_move = Vector(0, 0)
         if parent_rotation == None:
@@ -315,7 +323,7 @@ class Element():
             offset = Vector(0, 0)
 
         print(self.name)
-        for element in self.elements: #this is the second layer, groupe element
+        for element in self.elements: #this is the second layer, group element
             load_position = None
             print(element.name)
 
@@ -336,7 +344,9 @@ class Element():
                         1: {'move': sum(self.moves), 'rotation': sum(self.rotations)},}
 
             turtle_draw(screen, element, load_position, parent_move=parent_move, parent_rotation=parent_rotation, offset=self.offset+offset)
-        
+        return screen
+
+
 class Machine():
     """A machine class that can contain multiple elements (that moves relatives to each other), a gravity member
     elements: element class that apply to the machine
@@ -390,9 +400,10 @@ class Machine():
         return {'forces': forces, "moments": moments}
 
 
-    def turtle_2d_draw(self, offset=None):
+    def turtle_2d_draw(self, offset=None, screen=None):
 
-        screen1, shape1 = init_turtle()
+        if screen == None:
+            screen1, shape1 = init_turtle()
 
 
         for element in self.elements:
@@ -407,7 +418,7 @@ class Machine():
                 parent_rotations = Rotation(0,0,0)
 
             element.turtle_2d_draw(screen=screen1, parent_move=parent_moves, parent_rotation=parent_rotations)
-
+            
         print('machine printed')
         turtle.exitonclick()
 

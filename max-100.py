@@ -53,6 +53,7 @@ max100.elements.append(mast)
 head = Element(name="Head", length=30, width=20, height=16)
 head_mast_pos = Vector(10, 12)
 head_mast = Load(head_mast_pos, 600, _type='mass')
+# screen1 = head.turtle_2d_draw()
 head.loads.append(head_mast)
 
 mast.elements.append(head)
@@ -85,8 +86,8 @@ mast.elements.append(head)
 
 # mast.offset = Vector(-8, 12) # Center at pivot point
 mast.rotate(Rotation(gamma=mast_angle))
-
-print('-----mast', mast)
+# print(mast.length)
+# print('-----mast', mast)
 # print('equivalent loads:', mast.reactions(gravity=Gravity()))
 
 
@@ -201,9 +202,10 @@ print('-----mast', mast)
 
 
 ## mast_alone = copy.deepcopy(mast) # Take a snapshot of the mast to make calculation on solely this portion.
-print('')
+# print('')
 # reactions = max150.reactions()
 # print('Equivalent Load:', reactions)
+
 max100.turtle_2d_draw()
 
 

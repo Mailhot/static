@@ -34,7 +34,7 @@ reactions: [(-6.735557395310442e-13, -30235.0, 0.0), (105800.0, 0.0, 390200.8996
 
 
 * Elements
-Rotation of an element will affecto it's move at same level. 
+Rotation of an element will affect it's move at same level. 
 Ex: a Vector(1, 0) with move: Vector(1, 1) and Rotation(0, 0, 90) will result in Vector(-2, 1).
 
 If you want the rotation to happen before the translation (move) place it at a lower level.

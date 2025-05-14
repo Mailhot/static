@@ -58,7 +58,7 @@ element3.rotations = [] #reset element3 rotations
 load2.rotate(Rotation(0,0,-90))
 reactions = machine1.reactions()
 print(reactions)
-# expected_reactions = {'forces': Vector(0, -30, 0), "moments": Vector(0.0, 0.0, -500.0)}
-# for key in expected_reactions.keys():
-# 	assert expected_reactions[key] == reactions[key], f'test3 failed for {key}, expected:{expected_reactions[key]}, got {reactions[key]}'
-# print('test4, all passed!')
+expected_reactions = {'forces': Vector(0, -30, 0), "moments": Vector(0.0, 0.0, -500.0)}
+for key in expected_reactions.keys():
+	assert expected_reactions[key] == reactions[key], f'test3 failed for {key}, expected:{expected_reactions[key]}, got {reactions[key]}'
+print('test5, all passed!')

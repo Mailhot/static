@@ -2,7 +2,6 @@ import numpy as np
 import numbers
 from math import sin, cos, radians
 from copy import deepcopy
-import display
 
 
 
@@ -100,6 +99,12 @@ class Rotation(Vector):
     """A rotation class, same as vector but with values in degree"""
     def __init__(self, alpha=0, beta=0, gamma=0):
         super().__init__(x=alpha, y=beta, z=gamma)
+    
+    def __repr__(self):
+        return f"Rotation({self.x}, {self.y}, {self.z})"
+
+    def __str__(self):
+        return f"Rotation({self.x}, {self.y}, {self.z})"
 
     # def __add__(self, other):
     #     self.alpha += other.alpha
@@ -115,6 +120,7 @@ class Rotation(Vector):
 
     def rotate(self, alpha=0, beta=0, gamma=0):
         print('this is a rotation vector, cant be rotated, simply add angles to it')
+
         return self
         
 
@@ -234,7 +240,10 @@ class Element():
     def rotate(self, rotation):
         # Rotate the element from it's origin
         # rotation = Rotation(alpha, beta, gamma)
-        self.rotations.append(rotation)
+        if isinstance(rotation, Rotation):
+            self.rotations.append(rotation)
+        else:
+            print(f'ERROR: need to have a Rotation() type to make a rotation got {type(rotation)}')
         return self
 
     def move(self, move):
@@ -243,6 +252,7 @@ class Element():
         return self
 
     def reactions(self, gravity=None, parent_move=None, parent_rotation=None, offset=None):
+        
         forces = Vector(0,0,0)
         moments = Vector(0,0,0)
         positions = Vector(0,0,0)
@@ -298,7 +308,7 @@ class Element():
                 forces += force
                 moments += moment
 
-        elif self.elements: # TODO: ?An element has either child elements or loads not both.
+        if self.elements: # TODO: ?An element has either child elements or loads not both.
             for number, element in enumerate(self.elements):
                 
                 force, moment, position = element.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation,offset=offset_)
@@ -307,6 +317,7 @@ class Element():
                 moments += moment
 
         return [forces, moments, position]
+
 
     def draw(self, parent_move=None, parent_rotation=None, offset=None):
         
@@ -318,12 +329,18 @@ class Element():
         if offset == None:
             offset = Vector(0, 0)
 
-        print(self.name)
+        total_elements = self.elements
+
+        # if the current element has a load, draw it.
+        if len(self.loads) > 0:
+            total_elements.append(self)
+
+        print('drawing:', self.name)
         outputs = []
-        for element in self.elements: #this is the second layer, group element
+
+        for element in total_elements: #this is the second layer, group element
             load_position = None
             print(element.name)
-
 
             if len(element.loads) > 0:
                 for load in element.loads:
@@ -332,14 +349,40 @@ class Element():
                         print('load_position', load.position)
                     else:
                         continue
+                if len(element.elements) > 0 and element != self:
+                    output = element.draw(parent_move=parent_move, parent_rotation=parent_rotation, offset=self.offset+offset)
+                else:
+                    output = draw(element, load_position, parent_move=parent_move, parent_rotation=parent_rotation, offset=self.offset+offset)
+                
+                if type(output) == list:
+                    outputs += output
+                else: 
+                    outputs.append(output)
 
             # We only draw the element with mass load, the shape is based on the cg position
             else:
                 print('skipped element, no mass found')
                 continue
 
-            output = draw(element, load_position, parent_move=parent_move, parent_rotation=parent_rotation, offset=self.offset+offset)
-            outputs.append(output)
+        return outputs
+            
+
+
+        
+        # # Draw itself if it has a load
+        # load_position == None
+        # if len(self.loads) > 0:
+        #     for load in self.loads:
+        #         if load._type == 'mass':
+        #             load_position = load.position
+        #             print('load_position', load.position)
+        #         else:
+        #             continue
+        #     if load_position == None:
+        #         print(f'ERROR: no load found for {self.name}')
+
+        # output = draw(self, load_position, parent_move=None, parent_rotation=None, offset=self.offset+offset)
+        # outputs.append(output)
         return outputs
 
 
@@ -435,22 +478,25 @@ class Machine():
 
     def draw(self, offset=None, screen=None):
 
-        if screen == None:
-            screen1 = display.init()
+        
         elements_out = []
         for element in self.elements:
             if len(element.moves) >=1:
                 parent_moves = sum(element.moves)
+            
             else:
                 parent_moves = Vector(0, 0)
 
             if len(element.rotations) >=1:
                 parent_rotations = sum(element.rotations)
+            
             else:
                 parent_rotations = Rotation(0,0,0)
 
             output = element.draw(parent_move=parent_moves, parent_rotation=parent_rotations)
             elements_out += output
+
+
         print('machine printed')
         return elements_out
 
@@ -481,12 +527,13 @@ def draw(element, load_position, parent_move=None, parent_rotation=None, offset=
     # print('a', element_rotation, 'b', parent_rotation)
     total_rotation = element_rotation + parent_rotation
     print('draw', element.length, element.height, element_move_rotated.x, element_move_rotated.y, total_rotation)
-    final_position = (element_move_rotated.x, element_move_rotated.y)
+    final_position = (element_move_rotated.x+offset.x, element_move_rotated.y+offset.y)
     print(total_rotation)
     # display.add_element(element, final_position, total_rotation.gamma, color=(255, 0, 0))
     # display.run()
     # print('type', type(element.length))
     output = {'length': element.length, 'height': element.height, 'angle': total_rotation.z, 'color': 'RED', 'center': (element_move_rotated.x, -element_move_rotated.y)}
+    print('output:', output)
     return output
 
 

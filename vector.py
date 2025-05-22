@@ -228,6 +228,7 @@ class Element():
         if elements is None:
             elements = []
         self.elements = elements
+        self.ops = []
 
         if offset is None:
             offset = Vector(0, 0)
@@ -241,14 +242,14 @@ class Element():
         # Rotate the element from it's origin
         # rotation = Rotation(alpha, beta, gamma)
         if isinstance(rotation, Rotation):
-            self.rotations.append(rotation)
+            self.ops.append(rotation)
         else:
             print(f'ERROR: need to have a Rotation() type to make a rotation got {type(rotation)}')
         return self
 
     def move(self, move):
         # move = Vector(x=x, y=y, z=z)
-        self.moves.append(move)
+        self.ops.append(move)
         return self
 
     def reactions(self, gravity=None, parent_move=None, parent_rotation=None, offset=None):
@@ -320,7 +321,8 @@ class Element():
 
 
     def draw(self, parent_move=None, parent_rotation=None, offset=None):
-        
+
+
 
         if parent_move == None:
             parent_move = Vector(0, 0)
@@ -328,6 +330,17 @@ class Element():
             parent_rotation = Rotation(0, 0, 0)
         if offset == None:
             offset = Vector(0, 0)
+
+        if len(self.moves) >=1:
+            parent_moves += sum(self.moves)
+        else:
+            parent_moves = Vector(0, 0)
+        if len(self.rotations) >=1:
+            parent_rotations += sum(self.rotations)
+        else:
+            parent_rotations = Rotation(0,0,0)
+
+
 
         total_elements = self.elements
 
@@ -365,25 +378,7 @@ class Element():
                 continue
 
         return outputs
-            
 
-
-        
-        # # Draw itself if it has a load
-        # load_position == None
-        # if len(self.loads) > 0:
-        #     for load in self.loads:
-        #         if load._type == 'mass':
-        #             load_position = load.position
-        #             print('load_position', load.position)
-        #         else:
-        #             continue
-        #     if load_position == None:
-        #         print(f'ERROR: no load found for {self.name}')
-
-        # output = draw(self, load_position, parent_move=None, parent_rotation=None, offset=self.offset+offset)
-        # outputs.append(output)
-        return outputs
 
 
     def turtle_2d_draw(self, screen=None, parent_move=None, parent_rotation=None, offset=None):
@@ -481,19 +476,8 @@ class Machine():
         
         elements_out = []
         for element in self.elements:
-            if len(element.moves) >=1:
-                parent_moves = sum(element.moves)
-            
-            else:
-                parent_moves = Vector(0, 0)
-
-            if len(element.rotations) >=1:
-                parent_rotations = sum(element.rotations)
-            
-            else:
-                parent_rotations = Rotation(0,0,0)
-
-            output = element.draw(parent_move=parent_moves, parent_rotation=parent_rotations)
+        
+            output = element.draw(parent_move=None, parent_rotation=None, offset=offset)
             elements_out += output
 
 

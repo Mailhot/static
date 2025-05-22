@@ -106,6 +106,14 @@ class Rotation(Vector):
     def __str__(self):
         return f"Rotation({self.x}, {self.y}, {self.z})"
 
+    def __add__(self, other):
+        return Rotation(self.x+other.x, self.y+other.y, self.z+other.z)
+
+    def __radd__(self, other):
+        if other in [0, Rotation(0,0)]:
+            return Rotation(self.x, self.y, self.z)
+        else:
+            return other.__add__(self)
     # def __add__(self, other):
     #     self.alpha += other.alpha
     #     self.beta += other.beta
@@ -243,6 +251,7 @@ class Element():
         # rotation = Rotation(alpha, beta, gamma)
         if isinstance(rotation, Rotation):
             self.ops.append(rotation)
+            self.rotations.append(rotation)
         else:
             print(f'ERROR: need to have a Rotation() type to make a rotation got {type(rotation)}')
         return self
@@ -250,6 +259,7 @@ class Element():
     def move(self, move):
         # move = Vector(x=x, y=y, z=z)
         self.ops.append(move)
+        self.moves.append(move)
         return self
 
     def reactions(self, gravity=None, parent_move=None, parent_rotation=None, offset=None):
@@ -320,9 +330,7 @@ class Element():
         return [forces, moments, position]
 
 
-    def draw(self, parent_move=None, parent_rotation=None, offset=None):
-
-
+    def draw(self, parent_operation=None, parent_move=None, parent_rotation=None, offset=None):
 
         if parent_move == None:
             parent_move = Vector(0, 0)
@@ -330,15 +338,19 @@ class Element():
             parent_rotation = Rotation(0, 0, 0)
         if offset == None:
             offset = Vector(0, 0)
+        if parent_operation == None: 
+            total_parent_ops = self.ops
+        elif parent_operation != None:
+            total_parent_ops = self.ops + parent_operation
 
-        if len(self.moves) >=1:
-            parent_moves += sum(self.moves)
-        else:
-            parent_moves = Vector(0, 0)
-        if len(self.rotations) >=1:
-            parent_rotations += sum(self.rotations)
-        else:
-            parent_rotations = Rotation(0,0,0)
+        # if len(self.moves) >=1:
+        #     parent_moves += sum(self.moves)
+        # else:
+        #     parent_moves = Vector(0, 0)
+        # if len(self.rotations) >=1:
+        #     parent_rotations += sum(self.rotations)
+        # else:
+        #     parent_rotations = Rotation(0,0,0)
 
 
 
@@ -363,9 +375,9 @@ class Element():
                     else:
                         continue
                 if len(element.elements) > 0 and element != self:
-                    output = element.draw(parent_move=parent_move, parent_rotation=parent_rotation, offset=self.offset+offset)
+                    output = element.draw(parent_move=parent_move, parent_operation=total_parent_ops, parent_rotation=parent_rotation, offset=self.offset+offset)
                 else:
-                    output = draw(element, load_position, parent_move=parent_move, parent_rotation=parent_rotation, offset=self.offset+offset)
+                    output = draw(element, load_position, parent_operation=total_parent_ops, parent_move=parent_move, parent_rotation=parent_rotation, offset=self.offset+offset)
                 
                 if type(output) == list:
                     outputs += output
@@ -380,43 +392,6 @@ class Element():
         return outputs
 
 
-
-    def turtle_2d_draw(self, screen=None, parent_move=None, parent_rotation=None, offset=None):
-        
-
-        if screen == None:
-            screen1, shape1 = init_turtle()
-            screen = screen1
-        if parent_move == None:
-            parent_move = Vector(0, 0)
-        if parent_rotation == None:
-            parent_rotation = Rotation(0, 0, 0)
-        if offset == None:
-            offset = Vector(0, 0)
-
-        print(self.name)
-        for element in self.elements: #this is the second layer, group element
-            load_position = None
-            print(element.name)
-
-
-            if len(element.loads) > 0:
-                for load in element.loads:
-                    if load._type == 'mass':
-                        load_position = load.position
-                        print('load_position', load.position)
-                    else:
-                        continue
-
-            # We only draw the element with mass load, the shape is based on the cg position
-            else:
-                print('skipped element, no mass found')
-                continue
-            move_rot = {0: {'move': parent_move, 'rotation': parent_rotation},
-                        1: {'move': sum(self.moves), 'rotation': sum(self.rotations)},}
-
-            turtle_draw(screen, element, load_position, parent_move=parent_move, parent_rotation=parent_rotation, offset=self.offset+offset)
-        return screen
 
 
 class Machine():
@@ -488,34 +463,51 @@ class Machine():
     
 
 
-def draw(element, load_position, parent_move=None, parent_rotation=None, offset=None):
+def draw(element, load_position, parent_operation=None, parent_move=None, parent_rotation=None, offset=None):
 
-    if parent_move == None:
-        parent_move = Vector(0, 0)
-    if parent_rotation == None:
-        parent_rotation = Rotation(0, 0, 0)
+    # if parent_move == None:
+    #     parent_move = Vector(0, 0)
+    # if parent_rotation == None:
+    #     parent_rotation = Rotation(0, 0, 0)
     if offset == None:
         offset = Vector(0, 0)
+
+    if parent_operation == None:
+        tot_operations = element.ops 
+    elif parent_operation != None:
+        tot_operations = element.ops + parent_operation
+
+    
+
 
     # Add self moves and rotation as parent moves and rotation.
     element_move = Vector(0, 0)
     element_rotation = Rotation(0, 0)
-    if len(element.moves) >= 1:
-        element_move = sum(element.moves)
+    # if len(element.moves) >= 1:
+    #     element_move = sum(element.moves)
 
-    if len(element.rotations) >=  1:
-        element_rotation = sum(element.rotations)
+    # if len(element.rotations) >=  1:
+    #     element_rotation = sum(element.rotations)
+    element_move_rotated = load_position
+    total_rotation = Rotation(0, 0)
+    if tot_operations != None:
+        for operation in tot_operations:
+            print(operation)
+            if isinstance(operation, Rotation):
+                total_rotation += operation 
+                element_move_rotated.rotate(operation)
+            elif isinstance(operation, Vector):
+                element_move_rotated += operation
 
 
-    element_move_rotated = ((load_position + element_move).rotate(element_rotation) + parent_move).rotate(parent_rotation)
+
+    # element_move_rotated = ((load_position + element_move).rotate(element_rotation) + parent_move).rotate(parent_rotation)
     # print('a', element_rotation, 'b', parent_rotation)
-    total_rotation = element_rotation + parent_rotation
+    total_rotation = total_rotation + parent_rotation
     print('draw', element.length, element.height, element_move_rotated.x, element_move_rotated.y, total_rotation)
     final_position = (element_move_rotated.x+offset.x, element_move_rotated.y+offset.y)
-    print(total_rotation)
-    # display.add_element(element, final_position, total_rotation.gamma, color=(255, 0, 0))
-    # display.run()
-    # print('type', type(element.length))
+    print('rotation', total_rotation)
+
     output = {'length': element.length, 'height': element.height, 'angle': total_rotation.z, 'color': 'RED', 'center': (element_move_rotated.x, -element_move_rotated.y)}
     print('output:', output)
     return output

@@ -132,6 +132,8 @@ def test1():
     rm3 = (50, 0)
     r3 = (-20, 50)
     rm4 = (-20, -20)
+    theta0 = 0
+    theta1 = -45
     theta2 = 45
     theta3 = -45
     theta4 = 15 
@@ -142,15 +144,20 @@ def test1():
     ele0 = Element(name='Element 0', length=40, width=40, height=40)
     ele0_mass = Load(Vector(*rm0), m0, _type='mass')
     ele0.loads.append(ele0_mass)
-    # ele0.rotate(Rotation(gamma=-15))
-    ele0.move(Vector(*r1).rotate(Rotation(gamma=-15))).move(Vector(*r2).rotate(Rotation(gamma=15)))
+    ele0.move(Vector(*r1).rotate(Rotation(gamma=theta1)))
+    ele0.move(Vector(*r2).rotate(Rotation(gamma=theta2)))
+    # ele0.rotate(Rotation(gamma=theta2))
+    # ele0.move(Vector(*r2).rotate(Rotation(gamma=15)))
+    # ele0.move(Vector(*r1).rotate(Rotation(gamma=-15))).move(Vector(*r2).rotate(Rotation(gamma=15)))
     # ele0.rotate(Rotation(gamma=0))
 
     ele1 = Element(name='Element 1', length=100, width=20, height=20)
     ele1_mass = Load(Vector(*rm1), m1, _type='mass')
     ele1.loads.append(ele1_mass)
-    ele1.rotate(Rotation(gamma=-15))
-    ele1.move(Vector(*r2).rotate(Rotation(gamma=15)))
+    ele1.rotate(Rotation(gamma=theta1))
+    # ele1.move(Vector(*r1).rotate(Rotation(gamma=-15)))
+    ele1.move(Vector(*r2).rotate(Rotation(gamma=theta2)))
+
     # ele1.elements.append(ele0)
     # ele0.move(Vector(*r1).rotate(Rotation(gamma=-15)))
     # ele1.rotate(Rotation(gamma=-15))
@@ -158,11 +165,11 @@ def test1():
     # ele1.move(Vector(*rm1))
 
     ele2 = Element(name='Element 2', length=120, width=20, height=20)
-    # ele2_mass = Load(Vector(*rm2).rotate(Rotation(gamma=15)), m2, _type='mass')
-    # ele2.loads.append(ele2_mass)
+    ele2_mass = Load(Vector(*rm2), m2, _type='mass')
+    ele2.loads.append(ele2_mass)
     # ele2.elements.append(ele1)
     # ele1.move(Vector(*r2).rotate(Rotation(gamma=15)))
-    # ele2.rotate(Rotation(gamma=15))
+    ele2.rotate(Rotation(gamma=theta2))
     # ele2.move(Vector(*r2))
 
 

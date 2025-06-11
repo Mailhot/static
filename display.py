@@ -115,6 +115,8 @@ def sum_list(items):
     # print('combined')
     return result
 
+def case1():
+    pass
 
 def test1():
 
@@ -144,12 +146,10 @@ def test1():
     ele0 = Element(name='Element 0', length=40, width=40, height=40)
     ele0_mass = Load(Vector(*rm0), m0, _type='mass')
     ele0.loads.append(ele0_mass)
+    # ele0.rotate(Rotation(gamma=120))
     ele0.move(Vector(*r1).rotate(Rotation(gamma=theta1)))
     ele0.move(Vector(*r2).rotate(Rotation(gamma=theta2)))
-    # ele0.rotate(Rotation(gamma=theta2))
-    # ele0.move(Vector(*r2).rotate(Rotation(gamma=15)))
-    # ele0.move(Vector(*r1).rotate(Rotation(gamma=-15))).move(Vector(*r2).rotate(Rotation(gamma=15)))
-    # ele0.rotate(Rotation(gamma=0))
+
 
     ele1 = Element(name='Element 1', length=100, width=20, height=20)
     ele1_mass = Load(Vector(*rm1), m1, _type='mass')
@@ -157,12 +157,6 @@ def test1():
     ele1.rotate(Rotation(gamma=theta1))
     # ele1.move(Vector(*r1).rotate(Rotation(gamma=-15)))
     ele1.move(Vector(*r2).rotate(Rotation(gamma=theta2)))
-
-    # ele1.elements.append(ele0)
-    # ele0.move(Vector(*r1).rotate(Rotation(gamma=-15)))
-    # ele1.rotate(Rotation(gamma=-15))
-
-    # ele1.move(Vector(*rm1))
 
     ele2 = Element(name='Element 2', length=120, width=20, height=20)
     ele2_mass = Load(Vector(*rm2), m2, _type='mass')
@@ -179,7 +173,11 @@ def test1():
     main.elements.append(ele2)
 
     machine1.elements.append(main)
-    # machine1.reactions()
+    reac1 = machine1.reactions()
+    print('reactions', reac1)
+    assert reac1 == {'forces': Vector(0, -320, 0), 'moments': Vector(0.0, 0.0, -34557.6)}, 'ERROR: invalid, reactions for system.'
+
+
     
     items = machine1.draw()
     
@@ -198,7 +196,7 @@ def system1():
     # this is to define a system so it can generate an output that can be ingested into the app.
     # desired output: [{'length': 30, 'height': 20, 'angle': 45, 'color': 'RED', 'center': (10, -12)}]
     mast_slide_position = 0 # [0-40] inch 0 is the mast slide raised up all the way
-    feed_position = 80 # range [0-160] inch 0 is at bottom of mast
+    feed_position = 120 # range [0-160] inch 0 is at bottom of mast
     mast_angle = 20 # range [95 - 0] degree, 0 degree is laying flat
     # Track cat 308
     track_width = 26.1 # 308
@@ -245,46 +243,46 @@ def system1():
     mast.rotate(Rotation(gamma=mast_angle))
 
 
-    base = Element(name='Base Group')
-    max100.elements.append(base)
+    # base = Element(name='Base Group')
+    # max100.elements.append(base)
     
-    # 1-3
-    pivot_base = Element(name='Base Pivot', length=36, width=24, height=36)
-    pivot_base_cg_pos = Vector(18, 18)
-    pivot_base_cg = Load(pivot_base_cg_pos, 2000, _type='mass')
-    pivot_base.loads.append(pivot_base_cg)
-    base.elements.append(pivot_base)
-    # mast.move(Vector(8, 24)) # Move the mast assy to center at the base-pivot point
-    base.elements.append(pivot_base.move(Vector(-15.15, -36, 0))) # the mast base is positioned at -3, 15 in the base element
+    # # 1-3
+    # pivot_base = Element(name='Base Pivot', length=36, width=24, height=36)
+    # pivot_base_cg_pos = Vector(18, 18)
+    # pivot_base_cg = Load(pivot_base_cg_pos, 2000, _type='mass')
+    # pivot_base.loads.append(pivot_base_cg)
+    # base.elements.append(pivot_base)
+    # # mast.move(Vector(8, 24)) # Move the mast assy to center at the base-pivot point
+    # base.elements.append(pivot_base.move(Vector(-15.15, -36, 0))) # the mast base is positioned at -3, 15 in the base element
     
-    # 1-2
-    platform = Element(name='Platform', length=120, width=72, height=6)
-    platform_pos = Vector(60, 3)
-    platform_cg = Load(platform_pos, 2000, _type='mass')
-    platform.loads.append(platform_cg)
-    base.elements.append(platform)
-    pivot_base.move(Vector(10, 6))
-    # mast.offset.move(Vector(0, -6))
+    # # 1-2
+    # platform = Element(name='Platform', length=120, width=72, height=6)
+    # platform_pos = Vector(60, 3)
+    # platform_cg = Load(platform_pos, 2000, _type='mass')
+    # platform.loads.append(platform_cg)
+    # base.elements.append(platform)
+    # pivot_base.move(Vector(10, 6))
+    # # mast.offset.move(Vector(0, -6))
 
 
-    base.elements.append(platform.move(Vector(-5.15, -30, 0))) # move platform in base referential and move it in place.
+    # base.elements.append(platform.move(Vector(-5.15, -30, 0))) # move platform in base referential and move it in place.
 
 
-    # Track 308 (this is for the 2 tracks)
-    # 1-1
-    track = Element(name='track pair', length=track_ground_length, width=machine_width, height=track_height)
-    track_cg = Load(Vector(track_ground_length/2, track_ground_length/2), track_mass, _type='mass')
-    track.loads.append(track_cg)
+    # # Track 308 (this is for the 2 tracks)
+    # # 1-1
+    # track = Element(name='track pair', length=track_ground_length, width=machine_width, height=track_height)
+    # track_cg = Load(Vector(track_ground_length/2, track_ground_length/2), track_mass, _type='mass')
+    # track.loads.append(track_cg)
     
-    track.move(Vector(8, -88))
-    base.elements.append(track)
+    # track.move(Vector(8, -88))
+    # base.elements.append(track)
     
 
-    engine = Element(name='Engine', length=46.3, width=22.2, height=33.7)
-    engine_base_pos = Vector(13.4, 16.85, 0)
-    engine_base = Load(engine_base_pos, 1226, _type='mass')
-    engine.loads.append(engine_base)
-    base.elements.append(engine.move(Vector(60, -26, 0)))
+    # engine = Element(name='Engine', length=46.3, width=22.2, height=33.7)
+    # engine_base_pos = Vector(13.4, 16.85, 0)
+    # engine_base = Load(engine_base_pos, 1226, _type='mass')
+    # engine.loads.append(engine_base)
+    # base.elements.append(engine.move(Vector(60, -26, 0)))
 
     print('reactions:', max100.reactions())
 
@@ -304,4 +302,5 @@ if __name__ == "__main__" :
     theApp = App()
 
     theApp.items = test1()
+    # theApp.items = system1()
     theApp.on_execute()

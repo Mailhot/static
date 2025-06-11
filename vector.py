@@ -163,7 +163,7 @@ class Load():
         # self.position.z += z
         return Load(self.position+Vector(x, y, z), self.charge, self._type)
 
-    def reactions(self, gravity=None, parent_move=None, parent_rotation=None, offset=None): 
+    def reactions(self, gravity=None, parent_operation=None, parent_move=None, parent_rotation=None, offset=None): 
         # Calculate reaction forces and moment at origin of load.
         # if the load is part of an element, the load must be moved to proper position in element upon inserting it. 
         # print(self)
@@ -171,20 +171,30 @@ class Load():
         final_charge = deepcopy(self.charge)
         final_position = deepcopy(self.position)
 
-        # print('fp, pm', final_position, parent_move)
-        # print('offset', offset)
+
+        final_position = deepcopy(self.position)
+        total_rotation = Rotation(0, 0)
+        if parent_operation != None:
+            for operation in parent_operation:
+                print(operation)
+                if isinstance(operation, Rotation):
+                    total_rotation += operation 
+                    final_position.rotate(operation)
+                elif isinstance(operation, Vector):
+                    final_position += operation
 
 
-        if parent_rotation not in [None, Rotation(0,0)]:
-            # print('final_position before', final_position)
-            final_position = final_position.rotate(parent_rotation)
-            # print('final_position after', final_position)
-            if self._type == 'force':
-                final_charge = final_charge.rotate(parent_rotation)
-                # print(final_charge)
 
-        if parent_move not in [None, Vector(0,0)]:
-            final_position += parent_move #.rotate(parent_rotation)
+        # if parent_rotation not in [None, Rotation(0,0)]:
+        #     # print('final_position before', final_position)
+        #     final_position = final_position.rotate(parent_rotation)
+        #     # print('final_position after', final_position)
+        if self._type == 'force':
+            final_charge = final_charge.rotate(total_rotation)
+            # print(final_charge)
+
+        # if parent_move not in [None, Vector(0,0)]:
+        #     final_position += parent_move #.rotate(parent_rotation)
         
         # print('calculating force result:', final_position,  final_charge)
 
@@ -262,7 +272,7 @@ class Element():
         self.moves.append(move)
         return self
 
-    def reactions(self, gravity=None, parent_move=None, parent_rotation=None, offset=None):
+    def reactions(self, gravity=None, parent_operation=None, parent_move=None, parent_rotation=None, offset=None):
         
         forces = Vector(0,0,0)
         moments = Vector(0,0,0)
@@ -272,6 +282,11 @@ class Element():
         print('-', self.name)
         print('parent move and rotation', parent_move, parent_rotation)
         print('element moves and rotations:', self.name, self.moves, self.rotations)
+        
+        if parent_operation == None: 
+            total_parent_ops = self.ops
+        elif parent_operation != None:
+            total_parent_ops = self.ops + parent_operation
 
         if offset not in [None, Vector(0, 0)]:
             offset_ = deepcopy(self.offset + offset)
@@ -308,21 +323,23 @@ class Element():
             
             rotation += parent_rotation
             move.rotate(rotation)
-            # print('rotated move', move)
+            print('rotated move', move)
 
-        # print()
-        # print('parent move and rotation:', parent_move, parent_rotation)
+        print()
+        print('parent move and rotation:', move, rotation)
+
         if self.loads:
             for load in self.loads:
-                
-                force, moment, position = load.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation, offset=offset_)
+                print(load)
+                force, moment, position = load.reactions(gravity=gravity, parent_operation=total_parent_ops, parent_move=move, parent_rotation=rotation, offset=offset_)
+                print(f"load result:: force: {force}, moment: {moment}, position:{position}")
                 forces += force
                 moments += moment
 
         if self.elements: # TODO: ?An element has either child elements or loads not both.
             for number, element in enumerate(self.elements):
                 
-                force, moment, position = element.reactions(gravity=gravity, parent_move=move, parent_rotation=rotation,offset=offset_)
+                force, moment, position = element.reactions(gravity=gravity, parent_operation=total_parent_ops, parent_move=move, parent_rotation=rotation,offset=offset_)
                 print(number, element.name, force, moment, position)
                 forces += force
                 moments += moment
@@ -338,20 +355,11 @@ class Element():
             parent_rotation = Rotation(0, 0, 0)
         if offset == None:
             offset = Vector(0, 0)
+
         if parent_operation == None: 
             total_parent_ops = self.ops
         elif parent_operation != None:
             total_parent_ops = self.ops + parent_operation
-
-        # if len(self.moves) >=1:
-        #     parent_moves += sum(self.moves)
-        # else:
-        #     parent_moves = Vector(0, 0)
-        # if len(self.rotations) >=1:
-        #     parent_rotations += sum(self.rotations)
-        # else:
-        #     parent_rotations = Rotation(0,0,0)
-
 
 
         total_elements = self.elements
@@ -365,15 +373,15 @@ class Element():
 
         for element in total_elements: #this is the second layer, group element
             load_position = None
-            print(element.name)
+            print('--', element.name)
 
             if len(element.loads) > 0:
                 for load in element.loads:
                     if load._type == 'mass':
                         load_position = load.position
                         print('load_position', load.position)
-                    else:
-                        continue
+                        break
+
                 if len(element.elements) > 0 and element != self:
                     output = element.draw(parent_move=parent_move, parent_operation=total_parent_ops, parent_rotation=parent_rotation, offset=self.offset+offset)
                 else:
@@ -392,6 +400,56 @@ class Element():
         return outputs
 
 
+    def position(self, parent_operation=None, parent_move=None, parent_rotation=None, offset=None):
+
+        if parent_move == None:
+            parent_move = Vector(0, 0)
+        if parent_rotation == None:
+            parent_rotation = Rotation(0, 0, 0)
+        if offset == None:
+            offset = Vector(0, 0)
+        if parent_operation == None: 
+            total_parent_ops = self.ops
+        elif parent_operation != None:
+            total_parent_ops = self.ops + parent_operation
+
+
+        total_elements = self.elements
+
+        # if the current element has a load, draw it.
+        if len(self.loads) > 0:
+            total_elements.append(self)
+
+        # print('drawing:', self.name)
+        outputs = []
+
+        for element in total_elements: #this is the second layer, group element
+            load_position = None
+            print(element.name)
+
+            if len(element.loads) > 0:
+                for load in element.loads:
+                    if load._type == 'mass':
+                        load_position = load.position
+                        print('load_position', load.position)
+                    else:
+                        continue
+                if len(element.elements) > 0 and element != self:
+                    output = element.position(parent_move=parent_move, parent_operation=total_parent_ops, parent_rotation=parent_rotation, offset=self.offset+offset)
+                else:
+                    output = position(element, load_position, parent_operation=total_parent_ops, parent_move=parent_move, parent_rotation=parent_rotation, offset=self.offset+offset)
+                
+                if type(output) == list:
+                    outputs += output
+                else: 
+                    outputs.append(output)
+
+            # We only draw the element with mass load, the shape is based on the cg position
+            else:
+                print('skipped element, no mass found')
+                continue
+
+        return outputs
 
 
 class Machine():
@@ -423,32 +481,21 @@ class Machine():
         positions = Vector(0, 0)
 
 
-        # #remove close,minimaze,maximaze buttons:
-        # canvas = screen1.getcanvas()
-        # root = canvas.winfo_toplevel()
-        # root.overrideredirect(1)
-        # print(self.elements[0].name)
         for number, element in enumerate(self.elements):
             force = Vector(0,0)
             moment = Vector(0,0)
-            # shape1 = turtle.Turtle()
-            # shape1.color = ("black")
-
             
             force, moment, mass_positions = element.reactions(gravity=Gravity(), offset=None)
-            # if load._type == "mass":
-            #     turtle_2d_draw(shape2, self, position=position, rotation=rotation)
-            
-            print(number, element.name, force, moment)
+        
+            print(f"#{number}, name:{element.name}, force:{force}, moment:{moment}, mass:{mass_positions}")
             forces += force
-            # positions += mass_positions
+
             moments += moment
 
         return {'forces': forces, "moments": moments}
 
     def draw(self, offset=None, screen=None):
 
-        
         elements_out = []
         for element in self.elements:
         
@@ -459,21 +506,68 @@ class Machine():
         print('machine printed')
         return elements_out
 
+    def position(self, offset=None, screen=None):
+
+        elements_out = []
+        for element in self.elements:
+        
+            output = element.position(parent_move=None, parent_rotation=None, offset=offset)
+            elements_out += output
+
+
+        print('machine printed')
+        return elements_out
 
     
 
 
 def draw(element, load_position, parent_operation=None, parent_move=None, parent_rotation=None, offset=None):
 
-    # if parent_move == None:
-    #     parent_move = Vector(0, 0)
-    # if parent_rotation == None:
-    #     parent_rotation = Rotation(0, 0, 0)
+
     if offset == None:
         offset = Vector(0, 0)
 
     if parent_operation == None:
-        tot_operations = element.ops 
+        tot_operations = element.ops
+    elif parent_operation != None:
+        tot_operations = element.ops + parent_operation
+
+    # Add self moves and rotation as parent moves and rotation.
+    element_move = Vector(0, 0)
+    element_rotation = Rotation(0, 0)
+
+    element_move_rotated = load_position
+    total_rotation = Rotation(0, 0)
+    if tot_operations != None:
+        for operation in tot_operations:
+            # print(operation)
+            if isinstance(operation, Rotation):
+                print('operation', operation)
+                total_rotation += operation 
+                element_move_rotated.rotate(operation)
+            elif isinstance(operation, Vector):
+                print('operation', operation)
+                element_move_rotated += operation
+            print('operation status:', element_move_rotated)
+
+    total_rotation = total_rotation + parent_rotation
+    print('draw', element.length, element.height, element_move_rotated.x, element_move_rotated.y, total_rotation)
+    final_position = (element_move_rotated.x+offset.x, element_move_rotated.y+offset.y)
+    print('rotation', total_rotation)
+
+    output = {'length': element.length, 'height': element.height, 'angle': total_rotation.z, 'color': 'RED', 'center': (element_move_rotated.x, -element_move_rotated.y)}
+    print('output:', output)
+    return output
+
+
+def position(element, load_position, parent_operation=None, offset=None):
+
+
+    if offset == None:
+        offset = Vector(0, 0)
+
+    if parent_operation == None:
+        tot_operations = element.ops
     elif parent_operation != None:
         tot_operations = element.ops + parent_operation
 
@@ -483,33 +577,27 @@ def draw(element, load_position, parent_operation=None, parent_move=None, parent
     # Add self moves and rotation as parent moves and rotation.
     element_move = Vector(0, 0)
     element_rotation = Rotation(0, 0)
-    # if len(element.moves) >= 1:
-    #     element_move = sum(element.moves)
 
-    # if len(element.rotations) >=  1:
-    #     element_rotation = sum(element.rotations)
     element_move_rotated = load_position
     total_rotation = Rotation(0, 0)
     if tot_operations != None:
         for operation in tot_operations:
-            print(operation)
+            # print(operation)
             if isinstance(operation, Rotation):
+                print('operation', operation)
                 total_rotation += operation 
                 element_move_rotated.rotate(operation)
             elif isinstance(operation, Vector):
+                print('operation', operation)
                 element_move_rotated += operation
-
-
-
-    # element_move_rotated = ((load_position + element_move).rotate(element_rotation) + parent_move).rotate(parent_rotation)
-    # print('a', element_rotation, 'b', parent_rotation)
+            print('operation status:', element_move_rotated)
     total_rotation = total_rotation + parent_rotation
-    print('draw', element.length, element.height, element_move_rotated.x, element_move_rotated.y, total_rotation)
+    # print('draw', element.length, element.height, element_move_rotated.x, element_move_rotated.y, total_rotation)
     final_position = (element_move_rotated.x+offset.x, element_move_rotated.y+offset.y)
-    print('rotation', total_rotation)
+    # print('rotation', total_rotation)
 
-    output = {'length': element.length, 'height': element.height, 'angle': total_rotation.z, 'color': 'RED', 'center': (element_move_rotated.x, -element_move_rotated.y)}
-    print('output:', output)
+    output = {'length': element.length, 'height': element.height, 'angle': total_rotation.z, 'color': 'RED', 'center': (element_move_rotated.x, element_move_rotated.y)}
+    # print('output:', output)
     return output
 
 

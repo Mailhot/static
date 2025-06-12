@@ -83,6 +83,14 @@ pivot_cg = Load(pivot_cg_pos, 570, _type="mass")
 pivot.loads.append(pivot_cg)
 pivot_group.elements.append(pivot)
 
+
+## Base (only for mast lift cyl placement)
+base = Element(name="base", length=126, width=60, height=48)
+base_cg_pos = Vector(-36.54, -1.628, -5.03)
+base_cg = Load(pivot_base_cg_pos, 0, _type="mass")
+base.loads.append(base_cg)
+max100.elements.append(base)
+
 # Vector between coordinates
 
 R23 = Vector(-18-feed_position, 14, 0)

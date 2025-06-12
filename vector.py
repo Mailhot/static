@@ -184,19 +184,10 @@ class Load():
                     final_position += operation
 
 
-
-        # if parent_rotation not in [None, Rotation(0,0)]:
-        #     # print('final_position before', final_position)
-        #     final_position = final_position.rotate(parent_rotation)
-        #     # print('final_position after', final_position)
         if self._type == 'force':
             final_charge = final_charge.rotate(total_rotation)
             # print(final_charge)
 
-        # if parent_move not in [None, Vector(0,0)]:
-        #     final_position += parent_move #.rotate(parent_rotation)
-        
-        # print('calculating force result:', final_position,  final_charge)
 
         if offset not in [None, Vector(0,0)]:
             final_position += deepcopy(offset)
@@ -223,6 +214,22 @@ class Gravity(Vector):
         
     #TODO: normalize, take the random vector values and set them to unit vector.
         
+
+class Point():
+    """Point instance """
+    def __init__(self, x, y, z=0, name=None):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.name = name
+
+    def __repr__(self):
+        if self.name == None:
+            return f'P({self.x},{self.y})'
+        
+        elif self.name != None:
+            return f'{self.name}({self.x},{self.y})'
+
 
 class Element():
     def __init__(self, length=0, width=0, height=0, loads=None, name=None, elements=None, offset=None, rotations=None, moves=None):
@@ -251,6 +258,7 @@ class Element():
         if offset is None:
             offset = Vector(0, 0)
         self.offset = offset
+        self.points = []
 
     def __repr__(self):
 

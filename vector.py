@@ -1,7 +1,14 @@
+import logging
 import numpy as np
 import numbers
-from math import sin, cos, radians
+from math import sin, cos, radians, sqrt
 from copy import deepcopy
+
+# Internal step-by-step tracing (every operation applied while walking the
+# element tree). Silent by default - enable with:
+#   logging.basicConfig(level=logging.DEBUG)
+# when you need to see exactly how a result was built up.
+logger = logging.getLogger(__name__)
 
 
 
@@ -40,12 +47,12 @@ class Vector():
 
     def __mul__(self, other):
         if not isinstance(other, numbers.Real):
-            raise NotImplemented
+            return NotImplemented
         return Vector(self.x * other, self.y * other, self.z * other)
 
     def __rmul__(self, other):
         if not isinstance(other, numbers.Real):
-            raise NotImplemented
+            return NotImplemented
         return Vector(self.x * other, self.y * other, self.z * other)
 
     def __eq__(self, other):
@@ -57,11 +64,11 @@ class Vector():
             return False
 
     def move(self, move):
-        # Move vector like add
+        # Move vector like add, mutates in place (consistent with rotate())
         self.x += move.x
         self.y += move.y
         self.z += move.z
-        return Vector(self.x+move.x, self.y+move.y, self.z+move.z)
+        return self
 
     def rotate(self, rotation):
         # angle in degree
@@ -127,7 +134,7 @@ class Rotation(Vector):
     #         return other.__add__(self)
 
     def rotate(self, alpha=0, beta=0, gamma=0):
-        print('this is a rotation vector, cant be rotated, simply add angles to it')
+        logger.warning('this is a rotation vector, cant be rotated, simply add angles to it')
 
         return self
         
@@ -139,7 +146,14 @@ def cross_prod(vector1, vector2):
     result = np.cross(vector1, vector2)
     return Vector(result[0], result[1], result[2])
 
-    
+def normalize(vector):
+    # this function takes a vector as an input
+    ## it returns a unit vector and a norm value.
+    length = sqrt(vector.x**2 + vector.y**2 + vector.z**2)
+    normalized = Vector(vector.x/length, vector.y/length, vector.z/length)
+    return normalized, length
+
+
 
 class Load():
     """A position vector and charge vector combined to define a load."""
@@ -176,9 +190,9 @@ class Load():
         total_rotation = Rotation(0, 0)
         if parent_operation != None:
             for operation in parent_operation:
-                print(operation)
+                logger.debug('load operation: %s', operation)
                 if isinstance(operation, Rotation):
-                    total_rotation += operation 
+                    total_rotation += operation
                     final_position.rotate(operation)
                 elif isinstance(operation, Vector):
                     final_position += operation
@@ -186,7 +200,6 @@ class Load():
 
         if self._type == 'force':
             final_charge = final_charge.rotate(total_rotation)
-            # print(final_charge)
 
 
         if offset not in [None, Vector(0,0)]:
@@ -228,7 +241,19 @@ class Point():
             return f'P({self.x},{self.y})'
         
         elif self.name != None:
-            return f'{self.name}({self.x},{self.y})'
+            return f'{self.name} P({self.x},{self.y})'
+
+    def movement(self, parent_operation=None):
+        
+        final_position = Vector(self.x, self.y, self.z)
+        if parent_operation != None:
+            for operation in parent_operation:
+                logger.debug('point operation: %s', operation)
+                if isinstance(operation, Rotation):
+                    final_position.rotate(operation)
+                elif isinstance(operation, Vector):
+                    final_position += operation
+        return Point(final_position.x, final_position.y, final_position.z, name=self.name)
 
 
 class Element():
@@ -246,7 +271,7 @@ class Element():
         self.loads = loads
         if moves is None:
             moves = []
-        self.moves = []
+        self.moves = moves
         if rotations is None:
             rotations = []
         self.rotations = rotations
@@ -271,7 +296,7 @@ class Element():
             self.ops.append(rotation)
             self.rotations.append(rotation)
         else:
-            print(f'ERROR: need to have a Rotation() type to make a rotation got {type(rotation)}')
+            logger.error('need to have a Rotation() type to make a rotation got %s', type(rotation))
         return self
 
     def move(self, move):
@@ -280,18 +305,28 @@ class Element():
         self.moves.append(move)
         return self
 
+    def reset_transform(self):
+        # Undo every move()/rotate() applied to this element so far.
+        # rotate()/move() write into both self.ops (what reactions() uses) and
+        # self.moves/self.rotations (what draw()/position() use) - clearing
+        # only one of them leaves the element partially "rotated" for whichever
+        # consumer reads the list you didn't clear.
+        self.ops = []
+        self.moves = []
+        self.rotations = []
+        return self
+
     def reactions(self, gravity=None, parent_operation=None, parent_move=None, parent_rotation=None, offset=None):
         
         forces = Vector(0,0,0)
         moments = Vector(0,0,0)
         positions = Vector(0,0,0)
-        # move = Vector(0,0)
-        # rotation = Rotation(0,0)
-        print('-', self.name)
-        print('parent move and rotation', parent_move, parent_rotation)
-        print('element moves and rotations:', self.name, self.moves, self.rotations)
-        
-        if parent_operation == None: 
+        points = []
+        logger.debug('- %s', self.name)
+        logger.debug('parent move and rotation %s %s', parent_move, parent_rotation)
+        logger.debug('element moves and rotations: %s %s %s', self.name, self.moves, self.rotations)
+
+        if parent_operation == None:
             total_parent_ops = self.ops
         elif parent_operation != None:
             total_parent_ops = self.ops + parent_operation
@@ -303,7 +338,6 @@ class Element():
             offset_ = deepcopy(self.offset)
         
         if len(self.moves) > 1:
-            # print('self.moves', self.moves)
             move = sum(self.moves) # sum all moves of the element
 
         elif len(self.moves) == 1:
@@ -314,14 +348,12 @@ class Element():
 
         if len(self.rotations) > 1:
             rotation = sum(self.rotations) # sum all rotation of the element
-            # print('self.rotations', self.rotations)
         elif len(self.rotations) == 1:
             rotation = deepcopy(self.rotations[0])
 
         else:
             rotation = Rotation(0, 0)
 
-        # TODO: The moves will be affected by parent rotations. 
         if parent_move != None:
 
             move += parent_move
@@ -331,28 +363,37 @@ class Element():
             
             rotation += parent_rotation
             move.rotate(rotation)
-            print('rotated move', move)
+            logger.debug('rotated move %s', move)
 
-        print()
-        print('parent move and rotation:', move, rotation)
-
+        logger.debug('parent move and rotation: %s %s', move, rotation)
+        position = Vector(0, 0, 0)
         if self.loads:
             for load in self.loads:
-                print(load)
+                logger.debug('load: %s', load)
                 force, moment, position = load.reactions(gravity=gravity, parent_operation=total_parent_ops, parent_move=move, parent_rotation=rotation, offset=offset_)
-                print(f"load result:: force: {force}, moment: {moment}, position:{position}")
+                logger.debug('load result:: force: %s, moment: %s, position:%s', force, moment, position)
                 forces += force
                 moments += moment
 
         if self.elements: # TODO: ?An element has either child elements or loads not both.
             for number, element in enumerate(self.elements):
-                
-                force, moment, position = element.reactions(gravity=gravity, parent_operation=total_parent_ops, parent_move=move, parent_rotation=rotation,offset=offset_)
-                print(number, element.name, force, moment, position)
+
+                force, moment, position, point = element.reactions(gravity=gravity, parent_operation=total_parent_ops, parent_move=move, parent_rotation=rotation,offset=offset_)
+
                 forces += force
                 moments += moment
+                if len(point) > 0:
+                    points += point
+                logger.debug('%s %s %s %s %s %s', number, element.name, force, moment, position, points)
 
-        return [forces, moments, position]
+
+        if self.points:
+            for number, point in enumerate(self.points):
+                moved_point = point.movement(parent_operation=total_parent_ops)
+                points.append(moved_point)
+
+
+        return [forces, moments, position, points]
 
 
     def draw(self, parent_operation=None, parent_move=None, parent_rotation=None, offset=None):
@@ -376,33 +417,33 @@ class Element():
         if len(self.loads) > 0:
             total_elements.append(self)
 
-        print('drawing:', self.name)
+        logger.debug('drawing: %s', self.name)
         outputs = []
 
         for element in total_elements: #this is the second layer, group element
             load_position = None
-            print('--', element.name)
+            logger.debug('-- %s', element.name)
 
             if len(element.loads) > 0:
                 for load in element.loads:
                     if load._type == 'mass':
                         load_position = load.position
-                        print('load_position', load.position)
+                        logger.debug('load_position %s', load.position)
                         break
 
                 if len(element.elements) > 0 and element != self:
                     output = element.draw(parent_move=parent_move, parent_operation=total_parent_ops, parent_rotation=parent_rotation, offset=self.offset+offset)
                 else:
                     output = draw(element, load_position, parent_operation=total_parent_ops, parent_move=parent_move, parent_rotation=parent_rotation, offset=self.offset+offset)
-                
+
                 if type(output) == list:
                     outputs += output
-                else: 
+                else:
                     outputs.append(output)
 
             # We only draw the element with mass load, the shape is based on the cg position
             else:
-                print('skipped element, no mass found')
+                logger.debug('skipped element, no mass found')
                 continue
 
         return outputs
@@ -428,33 +469,32 @@ class Element():
         if len(self.loads) > 0:
             total_elements.append(self)
 
-        # print('drawing:', self.name)
         outputs = []
 
         for element in total_elements: #this is the second layer, group element
             load_position = None
-            print(element.name)
+            logger.debug(element.name)
 
             if len(element.loads) > 0:
                 for load in element.loads:
                     if load._type == 'mass':
                         load_position = load.position
-                        print('load_position', load.position)
+                        logger.debug('load_position %s', load.position)
                     else:
                         continue
                 if len(element.elements) > 0 and element != self:
                     output = element.position(parent_move=parent_move, parent_operation=total_parent_ops, parent_rotation=parent_rotation, offset=self.offset+offset)
                 else:
                     output = position(element, load_position, parent_operation=total_parent_ops, parent_move=parent_move, parent_rotation=parent_rotation, offset=self.offset+offset)
-                
+
                 if type(output) == list:
                     outputs += output
-                else: 
+                else:
                     outputs.append(output)
 
             # We only draw the element with mass load, the shape is based on the cg position
             else:
-                print('skipped element, no mass found')
+                logger.debug('skipped element, no mass found')
                 continue
 
         return outputs
@@ -486,21 +526,20 @@ class Machine():
     def reactions(self):
         forces = Vector(0, 0, 0)
         moments = Vector(0, 0, 0)
-        positions = Vector(0, 0)
+        points = []
+        breakdown = []  # per top-level element contribution, in element order
 
+        for element in self.elements:
+            force, moment, mass_positions, point = element.reactions(gravity=Gravity(), offset=None)
 
-        for number, element in enumerate(self.elements):
-            force = Vector(0,0)
-            moment = Vector(0,0)
-            
-            force, moment, mass_positions = element.reactions(gravity=Gravity(), offset=None)
-        
-            print(f"#{number}, name:{element.name}, force:{force}, moment:{moment}, mass:{mass_positions}")
+            logger.debug("name:%s, force:%s, moment:%s, mass:%s", element.name, force, moment, mass_positions)
+            breakdown.append({'name': element.name, 'forces': force, 'moments': moment})
             forces += force
-
             moments += moment
+            if len(point) > 0:
+                points += point
 
-        return {'forces': forces, "moments": moments}
+        return {'forces': forces, "moments": moments, "points": points, "breakdown": breakdown}
 
     def draw(self, offset=None, screen=None):
 
@@ -511,7 +550,7 @@ class Machine():
             elements_out += output
 
 
-        print('machine printed')
+        logger.debug('machine printed')
         return elements_out
 
     def position(self, offset=None, screen=None):
@@ -523,10 +562,11 @@ class Machine():
             elements_out += output
 
 
-        print('machine printed')
+        logger.debug('machine printed')
         return elements_out
 
-    
+ 
+
 
 
 def draw(element, load_position, parent_operation=None, parent_move=None, parent_rotation=None, offset=None):
@@ -548,24 +588,50 @@ def draw(element, load_position, parent_operation=None, parent_move=None, parent
     total_rotation = Rotation(0, 0)
     if tot_operations != None:
         for operation in tot_operations:
-            # print(operation)
             if isinstance(operation, Rotation):
-                print('operation', operation)
-                total_rotation += operation 
+                total_rotation += operation
                 element_move_rotated.rotate(operation)
             elif isinstance(operation, Vector):
-                print('operation', operation)
                 element_move_rotated += operation
-            print('operation status:', element_move_rotated)
+            logger.debug('operation status: %s', element_move_rotated)
 
     total_rotation = total_rotation + parent_rotation
-    print('draw', element.length, element.height, element_move_rotated.x, element_move_rotated.y, total_rotation)
+    logger.debug('draw %s %s %s %s %s', element.length, element.height, element_move_rotated.x, element_move_rotated.y, total_rotation)
     final_position = (element_move_rotated.x+offset.x, element_move_rotated.y+offset.y)
-    print('rotation', total_rotation)
 
     output = {'length': element.length, 'height': element.height, 'angle': total_rotation.z, 'color': 'RED', 'center': (element_move_rotated.x, -element_move_rotated.y)}
-    print('output:', output)
+    logger.debug('output: %s', output)
     return output
+
+def cylinder_force(reactions, points=None):
+    # # will render force on a cylinder between 2 points for a given set of reactions.
+    # if len(points) != 2:
+    #     print('ERROR: Points should be 2, given:', len(points))
+
+    # TODO: test if the reactions if properly formatted.
+    # ex: {'forces': Vector(0.0, -8271.54, 0.0), 'moments': Vector(24304.370000000003, 0.0, -239276.4484), 'points': [mast_lift_rod P(4.0,38.0), mast_lift_piston P(-13.25,-20.5625)]}
+    # the formula can't be solved directly so we work by x, y and z
+
+    moment = reactions['moments']
+    force = reactions['forces']
+    point1 = reactions['points'][0]
+    point2 = reactions['points'][1]
+    p2p1 = Vector(point2.x-point1.x, point2.y-point1.y, point2.z-point1.z) # starting from p2 (piston) we'll get a compression force as positive?
+    Rp2p1, _ = normalize(p2p1) # no need for the norm we're looking for an axis unit vector
+    r2 = Vector(point2.x, point2.y, point2.z)
+    res = cross_prod(Rp2p1, r2)
+    logger.debug('res %s', res)
+    # res.z is the perpendicular distance from the pivot (z-axis) to the
+    # cylinder's line of action - the lever arm the moment is divided by to
+    # get the force: the shorter the lever, the harder the cylinder has to push.
+    lever = res.z
+    Nx = 0
+    Ny = 0
+    Nz = -moment.z/lever
+
+    N = sqrt(Nx**2+Ny**2+Nz**2)
+    return {'force': N, 'lever': lever, 'point1': point1, 'point2': point2}
+
 
 
 def position(element, load_position, parent_operation=None, offset=None):
@@ -590,23 +656,80 @@ def position(element, load_position, parent_operation=None, offset=None):
     total_rotation = Rotation(0, 0)
     if tot_operations != None:
         for operation in tot_operations:
-            # print(operation)
             if isinstance(operation, Rotation):
-                print('operation', operation)
-                total_rotation += operation 
+                total_rotation += operation
                 element_move_rotated.rotate(operation)
             elif isinstance(operation, Vector):
-                print('operation', operation)
                 element_move_rotated += operation
-            print('operation status:', element_move_rotated)
+            logger.debug('operation status: %s', element_move_rotated)
     total_rotation = total_rotation + parent_rotation
-    # print('draw', element.length, element.height, element_move_rotated.x, element_move_rotated.y, total_rotation)
     final_position = (element_move_rotated.x+offset.x, element_move_rotated.y+offset.y)
-    # print('rotation', total_rotation)
 
     output = {'length': element.length, 'height': element.height, 'angle': total_rotation.z, 'color': 'RED', 'center': (element_move_rotated.x, element_move_rotated.y)}
     # print('output:', output)
     return output
+
+   
+def axle(axis, forces, moments, points, breakdown=None):
+    # limit a loading position to a certain axis,
+    # axis: a tuple for unit vector around which rotaiton happens
+    # forces, moments, points:  output from a machine
+    initial_moments = moments
+    axis_vector = Vector(*axis)
+    moments = Vector(moments.x * axis_vector.x, moments.y*axis_vector.y, moments.z*axis_vector.z)
+    logger.debug('moments filtered by axis %s: %s => %s', axis, initial_moments, moments)
+    result = {'forces': forces, "moments": moments, "points": points}
+    if breakdown is not None:
+        result['breakdown'] = breakdown
+    return result
+
+
+def format_vector(v, width=10, precision=2):
+    return f"({v.x:>{width}.{precision}f}, {v.y:>{width}.{precision}f}, {v.z:>{width}.{precision}f})"
+
+
+def format_params(params, indent='  '):
+    # One aligned "key = value" line per configuration parameter.
+    key_width = max(len(key) for key in params)
+    return "\n".join(f"{indent}{key:<{key_width}} = {value}" for key, value in params.items())
+
+
+def format_reactions_report(reactions, case_label=None, case_params=None, cylinder_result=None):
+    """Build a clear, human-readable report from a Machine.reactions() result.
+
+    reactions: dict from Machine.reactions() - needs 'breakdown', 'forces', 'moments'.
+    case_label: optional short heading printed at the top, e.g. "Case 1".
+    case_params: optional dict of configuration parameters, printed one per line
+        under case_label (e.g. the dict passed into build_max250()).
+    cylinder_result: optional dict from cylinder_force() - {'force', 'lever',
+        'point1', 'point2'}.
+    """
+    breakdown = reactions.get('breakdown', [])
+    name_width = max([len(item['name']) for item in breakdown] + [len('TOTAL')])
+
+    lines = []
+    if case_label is not None:
+        lines.append(f"=== {case_label} ===")
+    if case_params is not None:
+        lines.append(format_params(case_params))
+    if case_label is not None or case_params is not None:
+        lines.append("")
+
+    lines.append("Per-element contribution:")
+    for item in breakdown:
+        lines.append(f"  {item['name']:<{name_width}}  force={format_vector(item['forces'])}  moment={format_vector(item['moments'])}")
+
+    total_line = f"  {'TOTAL':<{name_width}}  force={format_vector(reactions['forces'])}  moment={format_vector(reactions['moments'])}"
+    lines.append('  ' + '-' * (len(total_line) - 2))
+    lines.append(total_line)
+
+    if cylinder_result is not None:
+        lines.append("")
+        lines.append(f"Cylinder force: {cylinder_result['force']:.2f}")
+        lines.append(f"  lever arm (about z-axis): {cylinder_result['lever']:.2f}")
+        lines.append(f"  between: {cylinder_result['point1']} -> {cylinder_result['point2']}")
+
+    return "\n".join(lines)
 
 
 
